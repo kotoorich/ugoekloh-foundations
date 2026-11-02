@@ -29,7 +29,7 @@ Repository: https://github.com/kotoorich/ugoekloh-foundations
 
 ## Exact environment variables — use this as your checklist
 
-You do **not** need `DATABASE_URL`. This version connects to Supabase using its project URL and API keys.
+The frontend uses the Supabase project URL and public key. The backend also uses a private `SUPABASE_DB_URL` connection for automatic, versioned migrations; you do not need to run SQL manually.
 
 ### Vercel — frontend (3 variables)
 
@@ -43,13 +43,17 @@ VITE_API_URL=https://YOUR_RENDER_SERVICE.onrender.com
 
 All three are required. Replace the example URLs and key with the values from your own Supabase and Render projects.
 
-### Render — backend (6 variable names)
+### Render — backend (10 variables, including first-admin setup)
 
 Add these under **Render → Your Web Service → Environment**:
 
 ```env
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_DB_URL=YOUR_SUPABASE_SESSION_POOLER_URI
+INITIAL_ADMIN_EMAIL=admin@your-foundation-domain.org
+INITIAL_ADMIN_PASSWORD=YOUR_LONG_RANDOM_PASSWORD
+INITIAL_ADMIN_NAME=Foundation Administrator
 FRONTEND_URL=https://YOUR_VERCEL_DOMAIN.vercel.app
 ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN.vercel.app
 PAYSTACK_SECRET_KEY=
@@ -60,6 +64,10 @@ PAYSTACK_CALLBACK_URL=https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return
 |---|---|---|
 | `SUPABASE_URL` | Yes | Connects the backend to your Supabase project |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Private backend access to Supabase |
+| `SUPABASE_DB_URL` | Yes | Private Session Pooler connection for automatic schema migrations |
+| `INITIAL_ADMIN_EMAIL` | First setup | Initial super-admin email |
+| `INITIAL_ADMIN_PASSWORD` | First setup | Initial super-admin password; remove after bootstrap |
+| `INITIAL_ADMIN_NAME` | First setup | Initial super-admin display name |
 | `FRONTEND_URL` | Yes for production | Your deployed website address |
 | `ALLOWED_ORIGINS` | Yes for production | Allows your website to call the API |
 | `PAYSTACK_SECRET_KEY` | Only when enabling Paystack | Private Paystack test/live secret |
@@ -72,6 +80,8 @@ You can leave the two Paystack values empty/not configured until online donation
 - `SUPABASE_URL`: Supabase Dashboard → Project Settings → API.
 - `VITE_SUPABASE_ANON_KEY`: Supabase Dashboard → Project Settings → API Keys. Use the publishable key, or the legacy anon key if that is what your project provides.
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase Dashboard → Project Settings → API Keys. Use the secret key, or the legacy service_role key if that is what your project provides.
+- `SUPABASE_DB_URL`: Supabase Dashboard → Connect → Session pooler. Copy the URI and replace its password placeholder with your database password.
+- `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `INITIAL_ADMIN_NAME`: choose these yourself for the foundation's first administrator.
 - `VITE_API_URL`: the Render service URL, without an extra path such as `/api`.
 - `FRONTEND_URL` and `ALLOWED_ORIGINS`: your Vercel website URL.
 - Paystack values: your Paystack dashboard.
@@ -79,7 +89,7 @@ You can leave the two Paystack values empty/not configured until online donation
 **Important security rules**
 - Put `VITE_SUPABASE_ANON_KEY` in Vercel only. It is the browser-safe publishable/anon key and must be protected by Supabase Row Level Security.
 - Put `SUPABASE_SERVICE_ROLE_KEY` and `PAYSTACK_SECRET_KEY` in Render only. Never put them in Vercel, frontend code, GitHub, or a public document.
-- Do not add `DATABASE_URL`; the current backend does not read it.
+- Keep `SUPABASE_DB_URL` and all administrator credentials in Render only. Never put them in Vercel or GitHub.
 - After changing environment variables on Vercel, redeploy the frontend. After changing them on Render, save and restart/redeploy the service if prompted.
 
 For local development, copy `frontend/.env.example` to `frontend/.env` and `backend/.env.example` to `backend/.env`. The exact local values and commands are in [Local Development](docs/LOCAL_DEVELOPMENT.md).
@@ -111,7 +121,7 @@ These are sample formats, not real credentials.
 
 **Security:** The anon/public key is used by the frontend and relies on Row Level Security. The service-role key bypasses RLS. It must go in Render only. Never put the service-role key in Vercel, React code, GitHub or a public document.
 
-**Do I need DATABASE_URL? No.** The current FastAPI backend connects through the Supabase Python client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not add a PostgreSQL `DATABASE_URL`; it is not read by this version of the application.
+**The backend uses `SUPABASE_DB_URL` privately for automatic schema migrations.** It is separate from the Supabase API keys and must never be exposed to the browser.
 
 ## 4. Automatic database setup — no manual SQL steps
 
