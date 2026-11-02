@@ -9,8 +9,8 @@ export default function DonatePage(){
   const [email,setEmail]=useState('');
   const [phone,setPhone]=useState('');
   const [method,setMethod]=useState('paystack');
-  const [destinationType,setDestinationType]=useState('foundation');
-  const [destinationId,setDestinationId]=useState('');
+  const [destinationType,setDestinationType]=useState(()=>{const type=new URLSearchParams(window.location.search).get('type');return type==='campaign'||type==='programme'?type:'foundation';});
+  const [destinationId,setDestinationId]=useState(()=>new URLSearchParams(window.location.search).get('id')||'');
   const [campaigns,setCampaigns]=useState([]);
   const [programmes,setProgrammes]=useState([]);
   const [foundationSettings,setFoundationSettings]=useState({});
