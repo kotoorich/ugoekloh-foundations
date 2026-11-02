@@ -27,6 +27,8 @@ For local development, install Git, Node.js LTS and Python 3.11.
 
 Repository: https://github.com/kotoorich/ugoekloh-foundations
 
+**Deployment instructions:** This README and [the detailed deployment guide](docs/DEPLOYMENT.md) use the same environment-variable names and setup sequence. If deployment steps change, update both together.
+
 ## Exact environment variables — use this as your checklist
 
 The frontend uses the Supabase project URL and public key. The backend also uses a private `SUPABASE_DB_URL` connection for automatic, versioned migrations; you do not need to run SQL manually.
@@ -404,6 +406,10 @@ Open backend/.env and enter your own values:
 
     SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
     SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+    SUPABASE_DB_URL=YOUR_SUPABASE_SESSION_POOLER_URI
+    INITIAL_ADMIN_EMAIL=admin@your-foundation-domain.org
+    INITIAL_ADMIN_PASSWORD=YOUR_LONG_RANDOM_PASSWORD
+    INITIAL_ADMIN_NAME=Foundation Administrator
     PAYSTACK_SECRET_KEY=
     PAYSTACK_CALLBACK_URL=http://localhost:5173/donation/return
     FRONTEND_URL=http://localhost:5173
