@@ -6,9 +6,9 @@ A full-stack foundation website for publishing approved updates, receiving donat
 
 ## 1. What's included
 
-- Public website: Home, About, Programmes, Campaigns, Stories, News, Events, Gallery, Impact Reports, FAQs, Policies and Contact.
+- Public website: Home, About, Programmes, Stories, News, Events, Gallery, Impact Reports, FAQs, Policies and Contact.
 - Get involved: Volunteer applications, partnership enquiries and newsletter subscriptions.
-- Donations: Paystack checkout, server-side verification, one clear destination per gift (general foundation support, one campaign, or one programme), pending manual pledges and downloadable receipts.
+- Donations: Paystack checkout, server-side verification, one destination per gift (general foundation support or one programme), Paystack online checkout, verified payment tracking and downloadable receipts.
 - Admin workspace: Guided content editing, direct image uploads with previews, donation ledger with destination labels, enquiries, staff accounts and foundation settings.
 - Child case management: Guardian consent records, case-worker assignment and private case-document uploads.
 - Supabase database, authentication, row-level security and separate public/private storage buckets.
@@ -75,7 +75,7 @@ PAYSTACK_CALLBACK_URL=https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return
 | `PAYSTACK_SECRET_KEY` | Only when enabling Paystack | Private Paystack test/live secret |
 | `PAYSTACK_CALLBACK_URL` | Only when enabling Paystack | Where donors return after checkout |
 
-You can leave the two Paystack values empty/not configured until online donations are ready. The application can record manual pledges as pending.
+Online donations use Paystack only. Keep the secret key in Render; until Paystack is configured, the donation form will explain that online payments are temporarily unavailable. No manual pledges or offline payment instructions are accepted.
 
 ### Where to get the values
 
@@ -132,13 +132,13 @@ The backend applies the numbered SQL files in `supabase/migrations/` automatical
 - On the first deployment, it creates the schema, security policies, indexes, triggers and storage buckets.
 - It records completed migrations in `public.foundation_schema_migrations`.
 - On later redeployments, it applies only migration files that have not run before. Existing records are not deleted.
-- New database changes are delivered as a new numbered SQL migration file; do not edit an already-applied migration. Migration `007_directed_programme_donations.sql` adds programme-directed giving and separately recalculates campaign/programme totals from verified paid donations.
+- New database changes are delivered as a new numbered SQL migration file; do not edit an already-applied migration. Migration `007_directed_programme_donations.sql` adds programme-directed giving and recalculates programme totals from verified paid donations. Migration `008_burn_prevention_programmes.sql` seeds the two approved burn-prevention programmes.
 
 **One-time connection setting:** add `SUPABASE_DB_URL` to Render. In Supabase, open **Connect → Session pooler**, copy the URI, and replace its password placeholder with the database password. This is a private backend secret; never put it in Vercel or GitHub. Follow the same instructions in [the deployment guide](docs/DEPLOYMENT.md).
 
 The migration runner uses this private connection to apply schema changes. The Supabase service-role key alone cannot create PostgreSQL tables or policies through the normal REST API, which is why this separate database connection is necessary.
 
-The two storage buckets are created by the migrations:
+The migrations also seed the two published programmes **Fire Safety in the Home** and **Children and Fire Management at Home**. Their cover images can be uploaded from the programme editor; no image URL needs to be pasted.\n\nThe two storage buckets are created by the migrations:
 - `foundation-media`: public approved media.
 - `beneficiary-private`: private case documents.
 
