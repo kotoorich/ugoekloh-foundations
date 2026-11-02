@@ -14,7 +14,7 @@ cd ugoekloh-foundations
 
 ## 2. Configure Supabase
 1. Create a project at https://supabase.com/dashboard.
-2. Open **SQL Editor** and run migrations `001_initial_schema.sql`, `002_operations_and_safeguarding.sql` and `003_public_content_and_case_access.sql` in that order.
+2. Open **SQL Editor** and run migrations `001_initial_schema.sql`, `002_operations_and_safeguarding.sql` `003_public_content_and_case_access.sql` and `004_case_documents_and_audit.sql` in that order.
 3. In **Project Settings → API**, copy the Project URL and anon/public key.
 4. In Authentication → Providers, enable Email. Turn off public sign-ups if the admin-only site is intended.
 5. In Authentication → URL Configuration, add `http://localhost:5173` as a site URL.
