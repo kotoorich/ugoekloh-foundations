@@ -56,13 +56,13 @@ def health(): return {"status":"ok","service":"ugo-ekloh-foundation-api"}
 @app.get("/api/public/home")
 def home():
     if not db: return {"programmes":[],"impact":{}}
-    programs=db.table("programmes").select("id,title,slug,category,description,image_path,amount_raised").eq("status","published").in_("slug",["fire-safety-in-the-home","children-and-fire-management-at-home"]).order("created_at").execute().data
+    programs=db.table("programmes").select("id,title,slug,category,description,image_path,goal_amount,amount_raised").eq("status","published").in_("slug",["fire-safety-in-the-home","children-and-fire-management-at-home"]).order("created_at").execute().data
     return {"programmes":programs or [],"impact":{}}
 
 @app.get("/api/public/programmes")
 def public_programmes():
     if not db:return {"items":[]}
-    items=db.table("programmes").select("id,title,slug,category,description,amount_raised,image_path,status").eq("status","published").order("created_at").execute().data
+    items=db.table("programmes").select("id,title,slug,category,description,goal_amount,amount_raised,image_path,status").eq("status","published").order("created_at").execute().data
     return {"items":items or []}
 
 @app.post("/api/public/contact")
