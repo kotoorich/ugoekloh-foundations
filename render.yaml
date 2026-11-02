@@ -29,3 +29,21 @@ services:
         sync: false
       - key: PAYSTACK_CALLBACK_URL
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REFRESH_TOKEN
+        sync: false
+      - key: GMAIL_SENDER_EMAIL
+        sync: false
+      - key: SENDPULSE_CLIENT_ID
+        sync: false
+      - key: SENDPULSE_CLIENT_SECRET
+        sync: false
+      - key: SENDPULSE_SENDER_EMAIL
+        sync: false
+      - key: EMAIL_SENDER_NAME
+        value: Ugo E Kloh Foundation
+      - key: EMAIL_ADMIN_NOTIFY_TO
+        sync: false
