@@ -24,7 +24,6 @@ class DonationRequest(BaseModel):
     email: EmailStr
     phone: str = Field(min_length=7, max_length=30)
     method: str = "paystack"
-    campaign_id: Optional[str] = None
     programme_id: Optional[str] = None
 
 class ContactRequest(BaseModel):
@@ -56,16 +55,9 @@ def health(): return {"status":"ok","service":"ugo-ekloh-foundation-api"}
 
 @app.get("/api/public/home")
 def home():
-    if not db: return {"programmes":[],"campaigns":[],"impact":{}}
+    if not db: return {"programmes":[],"impact":{}}
     programs=db.table("programmes").select("id,title,category,description,image_path,amount_raised").eq("status","published").order("created_at").limit(2).execute().data
-    campaigns=db.table("campaigns").select("id,title,description,goal_amount,amount_raised,image_path").eq("status","published").order("created_at").limit(1).execute().data
-    return {"programmes":programs or [],"campaigns":campaigns or [],"impact":{}}
-
-@app.get("/api/public/campaigns")
-def campaigns():
-    if not db:return {"items":[]}
-    items=db.table("campaigns").select("id,title,description,goal_amount,amount_raised,image_path,status").eq("status","published").order("created_at",desc=True).execute().data
-    return {"items":items or []}
+    return {"programmes":programs or [],"impact":{}}
 
 @app.get("/api/public/programmes")
 def public_programmes():
@@ -92,18 +84,13 @@ async def initialize_donation(payload: DonationRequest):
         raise HTTPException(422,"Only secure online payment is accepted.")
     if not PAYSTACK_SECRET_KEY:
         raise HTTPException(503,"Secure online donations are temporarily unavailable. Please try again later.")
-    if payload.campaign_id and payload.programme_id:
-        raise HTTPException(422,"Choose one donation destination only.")
-    if payload.campaign_id:
-        selected=client.table("campaigns").select("id").eq("id",payload.campaign_id).eq("status","published").maybe_single().execute().data
-        if not selected: raise HTTPException(404,"That campaign is no longer available. Please choose another destination.")
     if payload.programme_id:
         selected=client.table("programmes").select("id").eq("id",payload.programme_id).eq("status","published").maybe_single().execute().data
         if not selected: raise HTTPException(404,"That programme is no longer available. Please choose another destination.")
 
     amount_pesewas=int((payload.amount*100).quantize(Decimal("1")))
     ref="UEKF-"+uuid.uuid4().hex[:18].upper()
-    metadata={"donor_name":payload.name,"donor_phone":payload.phone,"campaign_id":payload.campaign_id,"programme_id":payload.programme_id,"donation_destination":"campaign" if payload.campaign_id else "programme" if payload.programme_id else "foundation"}
+    metadata={"donor_name":payload.name,"donor_phone":payload.phone,"programme_id":payload.programme_id,"donation_destination":"programme" if payload.programme_id else "foundation"}
     async with httpx.AsyncClient(timeout=25) as http:
         response=await http.post(
             "https://api.paystack.co/transaction/initialize",
