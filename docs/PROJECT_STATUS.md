@@ -34,7 +34,7 @@ Support children recovering from burn injuries and other vulnerable children thr
 - [ ] Proper edit/create forms with validation and image previews
 - [x] Staff account creation and activation/deactivation by super-admin
 - [x] Role-specific admin navigation and permission enforcement
-- [x] Beneficiary case registration, consent fields and role-restricted records (private document upload UI still pending)
+- [x] Beneficiary case registration, guardian consent fields, case-worker assignment and restricted private document uploads
 - [x] Donation ledger, volunteer and contact-message management (partnership workflow remains basic)
 - [ ] Audit-log viewer
 - [ ] Financial, campaign and impact reporting with CSV/PDF export
