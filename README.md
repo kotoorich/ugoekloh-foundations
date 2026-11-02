@@ -53,6 +53,8 @@ These are sample formats, not real credentials.
 
 **Security:** The anon/public key is used by the frontend and relies on Row Level Security. The service-role key bypasses RLS. It must go in Render only. Never put the service-role key in Vercel, React code, GitHub or a public document.
 
+**Do I need DATABASE_URL? No.** The current FastAPI backend connects through the Supabase Python client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not add a PostgreSQL `DATABASE_URL`; it is not read by this version of the application.
+
 ## 4. Run all six SQL migrations
 
 Open the repository and locate the folder supabase/migrations. Run these files in the exact order below:
