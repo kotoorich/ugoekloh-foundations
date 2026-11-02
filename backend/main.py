@@ -309,10 +309,6 @@ async def create_partnership(payload: dict):
     if admin_to:
         await send_email(client,to=admin_to,subject="New partnership enquiry",heading="A new partnership enquiry was received",message=f"A partnership enquiry from {safe['organization_name']} is ready for review in the Admin Dashboard.",category="partnership_admin_notification")
     return {'ok':True,'message':'Thank you. Your partnership enquiry has been received.','email_sent':bool(mail_result.get('sent'))}
-)
-
-class EmailTestRequest(BaseModel):
-    recipient: EmailStr
 
 def require_super_admin(request: Request):
     client=database()
