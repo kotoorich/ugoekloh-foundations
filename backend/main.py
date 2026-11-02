@@ -21,7 +21,7 @@ PAYSTACK_CALLBACK_URL=os.getenv("PAYSTACK_CALLBACK_URL","")
 db: Optional[Client] = create_client(SUPABASE_URL,SUPABASE_SERVICE_ROLE_KEY) if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY else None
 
 class DonationRequest(BaseModel):
-    amount: Decimal = Field(gt=0, le=Decimal("10000000"))
+    amount: Decimal = Field(gt=0, le=Decimal("10000000"), decimal_places=2)
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     phone: str = Field(min_length=7, max_length=30)
