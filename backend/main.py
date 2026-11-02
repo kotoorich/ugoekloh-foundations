@@ -101,7 +101,7 @@ async def initialize_donation(payload: DonationRequest):
     if response.status_code>=400 or not data.get("status"):
         raise HTTPException(502,"We could not start your secure payment. No donation has been recorded as received. Please try again.")
 
-    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":payload.email,"donor_phone":payload.phone,"status":"pending","campaign_id":payload.campaign_id,"programme_id":payload.programme_id,"payment_method":"paystack"}
+    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":payload.email,"donor_phone":payload.phone,"status":"pending","programme_id":payload.programme_id,"payment_method":"paystack"}
     try:
         client.table("donations").insert(row).execute()
     except Exception as exc:
