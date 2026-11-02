@@ -175,14 +175,14 @@ def newsletter(payload: NewsletterRequest):
 
 @app.post("/api/admin/staff")
 def create_staff(payload: StaffCreateRequest, request: Request):
-    require_super_admin(request)
+    actor=require_super_admin(request)
     client=database()
     try:
         created=client.auth.admin.create_user({"email":payload.email,"password":payload.password,"email_confirm":True,"user_metadata":{"full_name":payload.full_name}})
         user=created.user
         if not user: raise HTTPException(502,"The identity provider did not return a new user.")
         client.table("staff_profiles").insert({"user_id":user.id,"full_name":payload.full_name,"role":payload.role,"is_active":True}).execute()
-        client.table("audit_logs").insert({"actor":user.id,"action":"staff_created","entity":"staff_profiles","entity_id":user.id,"details":{"role":payload.role,"email":payload.email}}).execute()
+        client.table("audit_logs").insert({"actor":actor.id,"action":"staff_created","entity":"staff_profiles","entity_id":user.id,"details":{"role":payload.role,"email":payload.email}}).execute()
         return {"ok":True,"user_id":user.id,"email":payload.email,"role":payload.role}
     except HTTPException:
         raise
