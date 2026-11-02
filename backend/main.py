@@ -206,7 +206,7 @@ def get_email_settings(request: Request):
 def update_email_settings(payload: EmailSettingsUpdate, request: Request):
     actor=require_super_admin(request)
     client=database()
-    client.table("email_settings").upsert({"id":1,"enabled":payload.enabled,"provider":payload.provider,"updated_by":actor.id}).execute()
+    client.table("email_settings").upsert({"id":1,"enabled":payload.enabled,"provider":payload.provider,"updated_by":actor.id,"updated_at":datetime.now(timezone.utc).isoformat()}).execute()
     client.table("audit_logs").insert({"actor":actor.id,"action":"email_settings_updated","entity":"email_settings","entity_id":"1","details":{"enabled":payload.enabled,"provider":payload.provider}}).execute()
     return {"ok":True,"enabled":payload.enabled,"provider":payload.provider}
 
@@ -249,7 +249,7 @@ def public_settings():
 async def newsletter(payload: NewsletterRequest):
     client=database()
     client.table("newsletter_subscribers").upsert({"email":str(payload.email),"status":"subscribed"},on_conflict="email").execute()
-    mail_result=await send_email(client,to=str(payload.email),subject="You are subscribed to foundation updates",heading="Thank you for subscribing",message="You will receive foundation news and updates. You can unsubscribe at any time using the link in a newsletter.",category="newsletter_welcome")
+    mail_result=await send_email(client,to=str(payload.email),subject="You are subscribed to foundation updates",heading="Thank you for subscribing",message="You have been added to the foundation updates list. We will share news and information about the foundation.",category="newsletter_welcome")
     return {"ok":True,"message":"You are subscribed to foundation updates.","email_sent":bool(mail_result.get("sent"))}
 
 @app.post("/api/admin/staff")
