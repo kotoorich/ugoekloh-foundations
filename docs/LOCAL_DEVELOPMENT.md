@@ -122,3 +122,17 @@ Do not use a sample UUID and do not create a public administrator sign-up flow.
 - Use fictional data during development. Never use real children's personal, medical or guardian information.
 - Local environment files are ignored by Git; do not commit them.
 - For production deployment, follow `docs/DEPLOYMENT.md` and use the same key names in Render and Vercel.
+
+
+## Automatic database setup
+
+The backend startup now applies any pending SQL migration files automatically. For local backend startup, add these additional private values to `backend/.env`:
+
+```env
+SUPABASE_DB_URL=YOUR_SUPABASE_SESSION_POOLER_URI
+INITIAL_ADMIN_EMAIL=admin@your-foundation-domain.org
+INITIAL_ADMIN_PASSWORD=YOUR_LONG_RANDOM_PASSWORD
+INITIAL_ADMIN_NAME=Foundation Administrator
+```
+
+Use the Session Pooler URI from Supabase **Connect → Session pooler** and replace its password placeholder. Keep this URI and the service-role key private. The initial administrator is created automatically on first startup; remove `INITIAL_ADMIN_PASSWORD` after successful creation.
