@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminWorkspace from './pages/AdminWorkspace';
 import { News, Events, FAQs, Gallery, Impact, PolicyPage } from './pages/PublicPages';
+import Newsletter from './components/Newsletter';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { ArrowRight, Heart, Menu, X, HandHeart, ShieldCheck, GraduationCap, Stethoscope, Users, Instagram, Facebook, Mail, Phone, MapPin } from 'lucide-react';
 import { supabase, apiUrl, mediaUrl } from './lib/supabase';
