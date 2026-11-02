@@ -276,4 +276,4 @@ The email settings row and delivery log are created by migration `014_email_deli
 - Newsletter subscription welcome message.
 - Donor confirmation after Paystack payment verification.
 
-Case assignment alerts, staff invitation/password emails, full newsletter campaign composition, unsubscribe links, scheduled campaigns, retries and automatic provider failover remain follow-up implementation work. Do not assume those workflows are active until separately implemented and tested.
+Password-reset/first-login enforcement emails, full newsletter campaign composition, unsubscribe links and consent lifecycle, scheduled campaigns, retries and automatic provider failover remain follow-up implementation work. Do not assume those workflows are active until separately implemented and tested.
