@@ -67,6 +67,13 @@ def ensure_initial_admin() -> None:
         raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for admin setup.")
 
     client = create_client(url, service_key)
+    active_admins = client.table("staff_profiles").select("user_id").eq(
+        "role", "super_admin"
+    ).eq("is_active", True).limit(1).execute().data
+    if active_admins:
+        print("[admin] An active super administrator already exists; bootstrap skipped.")
+        return
+
     existing_user = None
     page = 1
     while True:
