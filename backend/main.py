@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from supabase import create_client, Client
 from dotenv import load_dotenv
+from email_service import send_email
 
 load_dotenv()
 app = FastAPI(title="Ugo E Kloh Foundation API", version="1.0.0")
@@ -66,16 +67,24 @@ def public_programmes():
     return {"items":items or []}
 
 @app.post("/api/public/contact")
-def contact(payload: ContactRequest):
+async def contact(payload: ContactRequest):
     client=database()
     result=client.table("contact_messages").insert(payload.model_dump()).execute()
-    return {"ok":True,"id":result.data[0]["id"] if result.data else None}
+    mail_result=await send_email(client,to=str(payload.email),subject="We received your message",heading="Thank you for contacting us",message="Your message has been received. Our team will review it and respond using the contact details you provided.",category="contact_acknowledgement")
+    admin_to=os.getenv("EMAIL_ADMIN_NOTIFY_TO","")
+    if admin_to:
+        await send_email(client,to=admin_to,subject="New foundation contact message",heading="New contact message received",message=f"A new message was submitted by {payload.name}. Please review it in the Admin Dashboard.",category="contact_admin_notification")
+    return {"ok":True,"id":result.data[0]["id"] if result.data else None,"email_sent":bool(mail_result.get("sent"))}
 
 @app.post("/api/public/volunteer")
-def volunteer(payload: VolunteerRequest):
+async def volunteer(payload: VolunteerRequest):
     client=database()
     result=client.table("volunteer_applications").insert(payload.model_dump()).execute()
-    return {"ok":True,"id":result.data[0]["id"] if result.data else None}
+    mail_result=await send_email(client,to=str(payload.email),subject="Volunteer application received",heading="Thank you for offering your time",message="Your volunteer application has been received. The foundation team will review it and contact you if further information is needed.",category="volunteer_acknowledgement")
+    admin_to=os.getenv("EMAIL_ADMIN_NOTIFY_TO","")
+    if admin_to:
+        await send_email(client,to=admin_to,subject="New volunteer application",heading="A new volunteer application was received",message=f"A volunteer application from {payload.name} is ready for review in the Admin Dashboard.",category="volunteer_admin_notification")
+    return {"ok":True,"id":result.data[0]["id"] if result.data else None,"email_sent":bool(mail_result.get("sent"))}
 
 @app.post("/api/donations/initialize")
 async def initialize_donation(payload: DonationRequest):
@@ -91,21 +100,27 @@ async def initialize_donation(payload: DonationRequest):
     amount_pesewas=int((payload.amount*100).quantize(Decimal("1")))
     ref="UEKF-"+uuid.uuid4().hex[:18].upper()
     metadata={"donor_name":payload.name,"donor_phone":payload.phone,"programme_id":payload.programme_id,"donation_destination":"programme" if payload.programme_id else "foundation"}
-    async with httpx.AsyncClient(timeout=25) as http:
-        response=await http.post(
-            "https://api.paystack.co/transaction/initialize",
-            headers={"Authorization":f"Bearer {PAYSTACK_SECRET_KEY}","Content-Type":"application/json"},
-            json={"email":payload.email,"amount":amount_pesewas,"currency":"GHS","reference":ref,"callback_url":PAYSTACK_CALLBACK_URL,"metadata":metadata},
-        )
-    data=response.json()
-    if response.status_code>=400 or not data.get("status"):
-        raise HTTPException(502,"We could not start your secure payment. No donation has been recorded as received. Please try again.")
-
-    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":payload.email,"donor_phone":payload.phone,"status":"pending","programme_id":payload.programme_id,"payment_method":"paystack"}
+    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":str(payload.email),"donor_phone":payload.phone,"status":"pending","programme_id":payload.programme_id,"payment_method":"paystack"}
     try:
         client.table("donations").insert(row).execute()
     except Exception as exc:
-        raise HTTPException(503,"Your payment session was created but could not be saved by the foundation. Please contact the foundation before attempting another payment.") from exc
+        raise HTTPException(503,"We could not create your donation record. No payment session was started. Please try again.") from exc
+    try:
+        async with httpx.AsyncClient(timeout=25) as http:
+            response=await http.post(
+                "https://api.paystack.co/transaction/initialize",
+                headers={"Authorization":f"Bearer {PAYSTACK_SECRET_KEY}","Content-Type":"application/json"},
+                json={"email":payload.email,"amount":amount_pesewas,"currency":"GHS","reference":ref,"callback_url":PAYSTACK_CALLBACK_URL,"metadata":metadata},
+            )
+        data=response.json()
+        if response.status_code>=400 or not data.get("status"):
+            client.table("donations").update({"status":"failed"}).eq("reference",ref).execute()
+            raise HTTPException(502,"We could not start your secure payment. No donation has been recorded as received. Please try again.")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        client.table("donations").update({"status":"failed"}).eq("reference",ref).execute()
+        raise HTTPException(502,"We could not connect to the payment provider. No donation has been recorded as received. Please try again.") from exc
     return {"ok":True,"reference":ref,"authorization_url":data["data"]["authorization_url"]}
 
 @app.get("/api/donations/verify/{reference}")
@@ -118,11 +133,13 @@ async def verify_donation(reference: str):
     tx=data["data"]
     if tx.get("status")!="success" or tx.get("reference")!=reference: return {"status":"pending","message":"Payment is not confirmed."}
     client=database()
-    donation=client.table("donations").select("id,amount,currency").eq("reference",reference).maybe_single().execute().data
+    donation=client.table("donations").select("id,amount,currency,status,donor_email,donor_name").eq("reference",reference).maybe_single().execute().data
     if not donation: raise HTTPException(404,"Donation reference not found.")
     expected=int(Decimal(str(donation["amount"]))*100)
     if int(tx.get("amount",0))!=expected or tx.get("currency")!="GHS": raise HTTPException(400,"Transaction amount or currency does not match.")
-    client.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",reference).execute()
+    if donation.get("status") != "paid":
+        client.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",reference).execute()
+        await send_email(client,to=donation["donor_email"],subject="Your donation has been received",heading="Thank you for your donation",message=f"Thank you {donation.get('donor_name') or 'for your support'}. Your donation of GHS {Decimal(str(donation['amount'])):.2f} has been verified successfully.",category="donation_confirmation")
     return {"status":"paid","reference":reference}
 
 @app.post("/api/payments/paystack/webhook")
@@ -137,9 +154,11 @@ async def paystack_webhook(request: Request):
     if event.get("event")=="charge.success":
         tx=event.get("data",{}); ref=tx.get("reference")
         if ref and db:
-            donation=db.table("donations").select("id,amount,currency").eq("reference",ref).maybe_single().execute().data
+            donation=db.table("donations").select("id,amount,currency,status,donor_email,donor_name").eq("reference",ref).maybe_single().execute().data
             if donation and tx.get("status")=="success" and tx.get("currency")=="GHS" and int(tx.get("amount",0))==int(Decimal(str(donation["amount"]))*100):
-                db.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",ref).execute()
+                if donation.get("status") != "paid":
+                    db.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",ref).execute()
+                    await send_email(db,to=donation["donor_email"],subject="Your donation has been received",heading="Thank you for your donation",message=f"Thank you {donation.get('donor_name') or 'for your support'}. Your donation of GHS {Decimal(str(donation['amount'])):.2f} has been verified successfully.",category="donation_confirmation")
     return {"received":True}
 
 
@@ -151,6 +170,119 @@ class StaffCreateRequest(BaseModel):
 
 class NewsletterRequest(BaseModel):
     email: EmailStr
+
+class EmailSettingsUpdate(BaseModel):
+    enabled: bool
+    provider: str = Field(pattern='^(gmail|sendpulse)
+def require_super_admin(request: Request):
+    client=database()
+    header=request.headers.get("authorization","")
+    if not header.lower().startswith("bearer "):
+        raise HTTPException(401,"Sign in is required.")
+    token=header.split(" ",1)[1]
+    try:
+        user=client.auth.get_user(token).user
+    except Exception:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    if not user:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    profile=client.table("staff_profiles").select("role,is_active").eq("user_id",user.id).maybe_single().execute().data
+    if not profile or profile.get("role") not in ("super_admin","admin") or not profile.get("is_active"):
+        raise HTTPException(403,"Only an active administrator can create staff accounts.")
+    return user
+
+
+@app.get("/api/admin/email/settings")
+def get_email_settings(request: Request):
+    require_super_admin(request)
+    client=database()
+    settings=client.table("email_settings").select("enabled,provider,updated_at").eq("id",1).maybe_single().execute().data or {"enabled":False,"provider":"gmail"}
+    logs=client.table("email_delivery_logs").select("id,recipient,subject,provider,status,category,error_message,created_at").order("created_at",desc=True).limit(30).execute().data or []
+    return {**settings,"logs":logs}
+
+@app.put("/api/admin/email/settings")
+def update_email_settings(payload: EmailSettingsUpdate, request: Request):
+    actor=require_super_admin(request)
+    client=database()
+    client.table("email_settings").upsert({"id":1,"enabled":payload.enabled,"provider":payload.provider,"updated_by":actor.id}).execute()
+    client.table("audit_logs").insert({"actor":actor.id,"action":"email_settings_updated","entity":"email_settings","entity_id":"1","details":{"enabled":payload.enabled,"provider":payload.provider}}).execute()
+    return {"ok":True,"enabled":payload.enabled,"provider":payload.provider}
+
+@app.post("/api/admin/email/test")
+async def test_email(payload: EmailTestRequest, request: Request):
+    require_super_admin(request)
+    client=database()
+    settings=client.table("email_settings").select("enabled").eq("id",1).maybe_single().execute().data or {}
+    if not settings.get("enabled"):
+        raise HTTPException(409,"Turn email mode ON before sending a test email.")
+    result=await send_email(client,to=str(payload.recipient),subject="Ugo E Kloh Foundation email test",heading="Email delivery is working",message="This is a test message from the foundation administration portal.",category="admin_test")
+    if not result.get("sent"):
+        raise HTTPException(502,"The selected email provider did not accept the test message. Check backend credentials and recent email activity.")
+    return {"ok":True,"sent":True}
+
+@app.get("/api/public/news")
+def public_news():
+    if not db:return {"items":[]}
+    items=db.table("news").select("id,title,slug,excerpt,body,cover_image_path,published_at").eq("status","published").order("published_at",desc=True).limit(50).execute().data
+    return {"items":items or []}
+
+@app.get("/api/public/events")
+def public_events():
+    if not db:return {"items":[]}
+    items=db.table("events").select("id,title,description,venue,starts_at,ends_at").eq("status","published").order("starts_at").limit(50).execute().data
+    return {"items":items or []}
+
+@app.get("/api/public/settings")
+def public_settings():
+    if not db:return {}
+    try:
+        result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,call_line,address,default_currency").eq("id",1).maybe_single().execute()
+        return (result.data or {}) if result is not None else {}
+    except Exception:
+        # Public contact settings are optional; never let an empty settings
+        # table break the public site footer or settings endpoint.
+        return {}
+
+@app.post("/api/public/newsletter")
+async def newsletter(payload: NewsletterRequest):
+    client=database()
+    client.table("newsletter_subscribers").upsert({"email":str(payload.email),"status":"subscribed"},on_conflict="email").execute()
+    mail_result=await send_email(client,to=str(payload.email),subject="You are subscribed to foundation updates",heading="Thank you for subscribing",message="You will receive foundation news and updates. You can unsubscribe at any time using the link in a newsletter.",category="newsletter_welcome")
+    return {"ok":True,"message":"You are subscribed to foundation updates.","email_sent":bool(mail_result.get("sent"))}
+
+@app.post("/api/admin/staff")
+def create_staff(payload: StaffCreateRequest, request: Request):
+    actor=require_super_admin(request)
+    client=database()
+    try:
+        created=client.auth.admin.create_user({"email":payload.email,"password":payload.password,"email_confirm":True,"user_metadata":{"full_name":payload.full_name}})
+        user=created.user
+        if not user: raise HTTPException(502,"The identity provider did not return a new user.")
+        client.table("staff_profiles").insert({"user_id":user.id,"full_name":payload.full_name,"role":payload.role,"is_active":True}).execute()
+        client.table("audit_logs").insert({"actor":actor.id,"action":"staff_created","entity":"staff_profiles","entity_id":user.id,"details":{"role":payload.role,"email":payload.email}}).execute()
+        return {"ok":True,"user_id":user.id,"email":payload.email,"role":payload.role}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400,"Could not create the staff account. Check that the email is not already registered and the service configuration is valid.") from exc
+
+@app.post('/api/public/partnerships')
+async def create_partnership(payload: dict):
+    required=['organization_name','contact_name','email','message']
+    if any(not str(payload.get(k,'')).strip() for k in required):
+        raise HTTPException(422,'Organization, contact name, email and message are required.')
+    safe={k:str(payload.get(k,''))[:4000] for k in ['organization_name','contact_name','email','phone','partnership_type','message']}
+    client=database()
+    result=client.table('partnership_applications').insert(safe).execute()
+    mail_result=await send_email(client,to=safe['email'],subject="Partnership enquiry received",heading="Thank you for your interest",message="Your partnership enquiry has been received. Our team will review the information and contact you.",category="partnership_acknowledgement")
+    admin_to=os.getenv("EMAIL_ADMIN_NOTIFY_TO","")
+    if admin_to:
+        await send_email(client,to=admin_to,subject="New partnership enquiry",heading="A new partnership enquiry was received",message=f"A partnership enquiry from {safe['organization_name']} is ready for review in the Admin Dashboard.",category="partnership_admin_notification")
+    return {'ok':True,'message':'Thank you. Your partnership enquiry has been received.','email_sent':bool(mail_result.get('sent'))}
+)
+
+class EmailTestRequest(BaseModel):
+    recipient: EmailStr
 
 def require_super_admin(request: Request):
     client=database()
