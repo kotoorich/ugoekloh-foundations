@@ -28,4 +28,41 @@ function Volunteer(){const [msg,setMsg]=useState('');async function send(e){e.pr
 function Partner(){return <><PageIntro eyebrow="PARTNERSHIPS" title="Together, we can do more." body="We welcome responsible collaboration with hospitals, schools, businesses, civil society and community groups."/><section className="section"><div className="container narrow"><p className="lead">Partner with us to extend access to care, education and practical support.</p><Link className="button" to="/contact">Start a conversation</Link></div></section></>}
 function Contact(){const [msg,setMsg]=useState('');async function send(e){e.preventDefault();const f=new FormData(e.target);try{const r=await fetch(apiUrl+'/api/public/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(f))});if(!r.ok)throw new Error('Unable to send message. Please try again.');const d=await r.json();setMsg(d.email_sent?'Your message has been received. A confirmation email has been sent to you.':'Your message has been received successfully.');e.target.reset();}catch(e){setMsg(e.message);}}return <><PageIntro eyebrow="CONTACT" title="We would love to hear from you." body="Ask a question, discuss a partnership or learn more about our work."/><section className="section"><div className="container donate-layout"><form className="donate-form" onSubmit={send}><h2>Send us a message</h2><input name="name" required placeholder="Your name"/><input name="email" type="email" required placeholder="Email address"/><input name="subject" placeholder="Subject"/><textarea name="message" required rows="5" placeholder="How can we help?"/><button className="button">Send message</button>{msg&&<p role="status">{msg}</p>}</form><div><h2>Let's connect</h2><p>Our team will respond using the contact details you provide. Official phone, postal and office details should be added after verification.</p><p><Mail/> hello@ugoeklohfoundation.org</p><p><MapPin/> Ghana</p></div></div></section></>}
 function DonationReturn(){const location=useLocation();const [message,setMessage]=useState('Verifying your payment securely…');useEffect(()=>{const params=new URLSearchParams(location.search);const ref=params.get('reference')||params.get('trxref');if(!ref){setMessage('No payment reference was supplied. If money was deducted, contact the foundation with your transaction receipt.');return;}fetch(apiUrl+'/api/donations/verify/'+encodeURIComponent(ref)).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.detail||'Verification could not be completed.');setMessage(d.status==='paid'?(d.email_sent?'Thank you. Your donation has been verified successfully. A confirmation email has been sent to you.':'Thank you. Your donation has been verified successfully.'):(d.message||'Your payment is not yet confirmed. Please check again shortly.'));}).catch(e=>setMessage(e.message));},[location.search]);return <section className="section"><div className="container narrow"><div className="empty-state"><ShieldCheck size={34}/><h2>Donation payment status</h2><p>{message}</p><Link className="button" to="/">Return to homepage</Link></div></div></section>}
+function SeoManager(){
+ const location=useLocation();
+ useEffect(()=>{
+  const path=location.pathname.replace(/\/$/,'')||'/';
+  const pages={
+   '/':['Ugo E Kloh Foundation | Every Child Deserves a Chance','Standing with children affected by burns through recovery support, prevention education and community partnerships.'],
+   '/about':['About Us | Ugo E Kloh Foundation','Learn about the Ugo E Kloh Foundation mission to support children affected by burns.'],
+   '/programmes':['Our Programmes | Ugo E Kloh Foundation','Explore burn prevention, fire safety and burn recovery programmes.'],
+   '/news':['Stories & News | Ugo E Kloh Foundation','Read foundation news, stories and approved updates.'],
+   '/stories':['Stories & News | Ugo E Kloh Foundation','Read foundation news, stories and approved updates.'],
+   '/events':['Events | Ugo E Kloh Foundation','See foundation events and community activities.'],
+   '/projects':['Projects | Ugo E Kloh Foundation','Explore projects supporting children and families affected by burns.'],
+   '/partners':['Our Partners | Ugo E Kloh Foundation','Meet the organisations supporting the foundation’s mission.'],
+   '/faqs':['Frequently Asked Questions | Ugo E Kloh Foundation','Find answers about the foundation, programmes and ways to help.'],
+   '/gallery':['Gallery | Ugo E Kloh Foundation','View approved foundation photographs and community activities.'],
+   '/impact':['Impact Reports | Ugo E Kloh Foundation','Read published foundation impact reports.'],
+   '/donate':['Donate Online | Ugo E Kloh Foundation','Support children affected by burns through secure online donations.'],
+   '/volunteer':['Volunteer | Ugo E Kloh Foundation','Offer your time and skills to support the foundation.'],
+   '/partner':['Become a Partner | Ugo E Kloh Foundation','Explore partnership opportunities with Ugo E Kloh Foundation.'],
+   '/contact':['Contact Us | Ugo E Kloh Foundation','Contact Ugo E Kloh Foundation for enquiries and support.'],
+   '/privacy':['Privacy Policy | Ugo E Kloh Foundation','Read the foundation privacy policy.'],
+   '/safeguarding':['Child Safeguarding | Ugo E Kloh Foundation','Read the foundation child safeguarding policy.'],
+   '/terms':['Terms of Use | Ugo E Kloh Foundation','Read the website terms of use.']
+  };
+  const [title,description]=pages[path]||['Ugo E Kloh Foundation','Supporting children affected by burns through care, recovery and prevention.'];
+  document.title=title;
+  const meta=(selector,attribute,value)=>{let node=document.head.querySelector(selector);if(!node){node=document.createElement('meta');const match=selector.match(/(?:name|property)="([^"]+)"/);node.setAttribute(attribute,match[1]);document.head.appendChild(node);}node.setAttribute('content',value);};
+  meta('meta[name="description"]','name',description);
+  meta('meta[property="og:title"]','property',title);
+  meta('meta[property="og:description"]','property',description);
+  meta('meta[property="og:type"]','property','website');
+  meta('meta[name="twitter:card"]','name','summary');
+  meta('meta[name="robots"]','name',path.startsWith('/admin')?'noindex,nofollow':'index,follow');
+ },[location.pathname]);
+ return null;
+}
+
 export default function App(){return <><Header/><main><Routes><Route path="/" element={<Home/>}/><Route path="/about" element={<About/>}/><Route path="/programmes" element={<Programmes/>}/><Route path="/stories" element={<News/>}/><Route path="/news" element={<News/>}/><Route path="/events" element={<Events/>}/><Route path="/projects" element={<Projects/>}/><Route path="/partners" element={<Partners/>}/><Route path="/faqs" element={<FAQs/>}/><Route path="/gallery" element={<Gallery/>}/><Route path="/impact" element={<Impact/>}/><Route path="/newsletter" element={<Newsletter/>}/><Route path="/privacy" element={<PolicyPage/>}/><Route path="/safeguarding" element={<PolicyPage/>}/><Route path="/terms" element={<PolicyPage/>}/><Route path="/donate" element={React.createElement(DonatePage)}/><Route path="/donation/return" element={<DonationReturn/>}/><Route path="/volunteer" element={<Volunteer/>}/><Route path="/partner" element={<PartnerApplication/>}/><Route path="/contact" element={<Contact/>}/><Route path="/admin/*" element={<AdminWorkspace/>}/><Route path="*" element={<PageIntro eyebrow="404" title="Page not found" body="The page you are looking for may have moved."/>}/></Routes></main><Footer/></>}
