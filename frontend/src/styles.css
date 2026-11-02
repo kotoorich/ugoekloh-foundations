@@ -209,3 +209,5 @@
 .workspace-setting-note strong{font-size:12px}
 .workspace-setting-note span{font-size:11px;color:#68766f}
 @media(max-width:600px){.workspace-setting-note{align-items:flex-start;flex-direction:column;gap:5px}}
+
+.programme-raised{display:block;color:#176b45;font-size:11px;font-weight:700;margin:12px 0 0}
