@@ -48,18 +48,16 @@ The Supabase project must be active and the database credentials must have permi
 |---|---|
 | `SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `YOUR_SUPABASE_SERVICE_ROLE_KEY` |
-| `SUPABASE_DB_URL` | Yes | Private Supabase Session Pooler URI used to run database migrations |
-| `INITIAL_ADMIN_EMAIL` | First setup | Email address for the initial super administrator |
-| `INITIAL_ADMIN_PASSWORD` | First setup | Initial administrator password (12+ characters) |
-| `INITIAL_ADMIN_NAME` | First setup | Administrator display name |
-| `SUPABASE_DB_URL` | Supabase Session Pooler connection URI |
-| `INITIAL_ADMIN_EMAIL` | Email for the first foundation super-admin |
-| `INITIAL_ADMIN_PASSWORD` | Long random password (minimum 12 characters) |
-| `INITIAL_ADMIN_NAME` | Display name for the first super-admin |
-| `PAYSTACK_SECRET_KEY` | Leave empty until Paystack test mode is ready |
-| `PAYSTACK_CALLBACK_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return` |
+| `SUPABASE_DB_URL` | Supabase Session Pooler URI, including your database password |
+| `INITIAL_ADMIN_EMAIL` | Foundation's initial administrator email |
+| `INITIAL_ADMIN_PASSWORD` | Long random password, at least 12 characters |
+| `INITIAL_ADMIN_NAME` | Administrator's display name |
 | `FRONTEND_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app` |
 | `ALLOWED_ORIGINS` | `https://YOUR_VERCEL_DOMAIN.vercel.app` |
+| `PAYSTACK_SECRET_KEY` | Leave empty until Paystack test mode is ready |
+| `PAYSTACK_CALLBACK_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return` |
+
+Set the first-admin values before the first deployment. After the backend successfully creates the administrator, remove `INITIAL_ADMIN_PASSWORD` from Render. The bootstrap will not overwrite the password of an existing Auth user or repeatedly promote accounts after an active super-admin already exists.
 
 At this point, if you have not deployed Vercel yet, you can temporarily use the Render-provided service URL for the first deployment and then update the three frontend URL values after Vercel is deployed. The health endpoint itself does not depend on these URLs.
 
@@ -150,7 +148,7 @@ If Paystack is not configured, the site can record a donation pledge as **pendin
 - [ ] Vercel website loads.
 - [ ] Supabase authentication URL configuration uses the deployed website domain.
 - [ ] Vercel has only the three frontend variables listed above.
-- [ ] Render has the six backend variables listed above.
+- [ ] Render has the backend variables listed above, including the private database connection.
 - [ ] No secret/service-role or Paystack key is exposed in Vercel or GitHub.
 - [ ] Initial super-admin was created from the private Render environment variables.
 - [ ] Contact, volunteer and partnership submissions reach the database.
