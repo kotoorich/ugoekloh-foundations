@@ -1,5 +1,6 @@
 -- Restrict case-document metadata to the assigned case worker and foundation admins.
 drop policy if exists "Case staff manage beneficiary documents" on public.beneficiary_documents;
+drop policy if exists "Case staff manage beneficiary documents" on public.beneficiary_documents;
 create policy "Case staff manage beneficiary documents" on public.beneficiary_documents for all to authenticated
 using(public.has_role(array['super_admin','admin']) or (public.has_role(array['case_worker']) and exists(select 1 from public.beneficiaries b where b.id=beneficiary_id and b.assigned_to=auth.uid())))
 with check(public.has_role(array['super_admin','admin']) or (public.has_role(array['case_worker']) and exists(select 1 from public.beneficiaries b where b.id=beneficiary_id and b.assigned_to=auth.uid())));
