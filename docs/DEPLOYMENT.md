@@ -1,59 +1,194 @@
-# Deployment guide: Vercel + Render + Supabase
+# Production deployment guide (Vercel + Render + Supabase)
 
-## A. Supabase
-1. Create a production Supabase project.
-2. Run migrations `001_initial_schema.sql`, `002_operations_and_safeguarding.sql` `003_public_content_and_case_access.sql` `004_case_documents_and_audit.sql` `005_partnership_applications.sql` and `006_campaign_totals.sql` in that order in SQL Editor.
-3. Copy Project URL, anon key and service_role key from Project Settings → API.
-4. Configure Authentication → URL Configuration with your Vercel production domain and any preview domains you actually use.
-5. Keep the service_role key only in Render environment variables. It bypasses RLS and must never be exposed in the browser.
-6. Confirm all three migrations completed and both storage buckets exist: `foundation-media` (public approved assets) and `beneficiary-private` (private sensitive documents).
+This is the detailed deployment checklist. The root `README.md` is the overview; the environment-variable names below are the same ones used by the application and the checked-in `.env.example` files.
 
-## B. Deploy Python API to Render
-1. Push the repository to GitHub.
-2. In Render, choose **New → Web Service**, connect this repository.
-3. Set Root Directory to `backend`.
-4. Build Command: `pip install -r requirements.txt`.
-5. Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`.
-6. Add environment variables:
-   - `SUPABASE_URL`: production project URL
-   - `SUPABASE_SERVICE_ROLE_KEY`: service role key (secret)
-   - `PAYSTACK_SECRET_KEY`: secret key, only when payment is enabled
-   - `PAYSTACK_CALLBACK_URL`: your frontend donation-return URL
-   - `FRONTEND_URL`: Vercel production URL
-   - `ALLOWED_ORIGINS`: Vercel production URL, comma-separated with any approved preview origins
-7. Deploy and test `https://YOUR-API.onrender.com/api/health`.
-8. Configure the Paystack webhook URL as `https://YOUR-API.onrender.com/api/payments/paystack/webhook`.
+## 1. What you are deploying
 
-## C. Deploy React frontend to Vercel
-1. In Vercel, import `kotoorich/ugoekloh-foundations`.
-2. Set Root Directory to `frontend`.
-3. Framework preset: Vite.
-4. Build Command: `npm run build`; Output Directory: `dist`; Install Command: `npm install`.
-5. Add environment variables:
-   - `VITE_SUPABASE_URL`: Supabase Project URL
-   - `VITE_SUPABASE_ANON_KEY`: Supabase anon/public key
-   - `VITE_API_URL`: Render API URL, e.g. `https://YOUR-API.onrender.com`
-6. Deploy. Redeploy after changing environment variables.
+| Service | What it runs | What you configure there |
+|---|---|---|
+| Supabase | PostgreSQL database, authentication and file storage | Project URL, API keys, SQL migrations, storage and auth URLs |
+| Render | Private Python FastAPI backend | Supabase service-role secret, API URLs, optional Paystack secret |
+| Vercel | Public React/Vite frontend | Supabase public/anon key and Render API URL |
 
-## D. Paystack setup
-1. Create/verify your Paystack merchant account and enable the channels available to your business.
-2. Copy the **secret key** into Render only. Do not put it in Vercel variables or frontend source.
-3. Set callback URL to the frontend donation-return page you configure.
-4. Set the webhook to the Render endpoint above.
-5. Test with Paystack test keys and test transactions before switching to live keys.
-6. The backend verifies the transaction with Paystack and checks the expected amount and currency before marking a donation paid.
+**Important: this project does not currently need a `DATABASE_URL`.** The backend in `backend/main.py` connects through the Supabase Python client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not add a PostgreSQL connection string unless the backend is deliberately changed to use a direct PostgreSQL driver/SQLAlchemy.
 
-## E. If Paystack is not active
-The site offers a manual donation pledge route. It records the pledge as **pending**, tells the donor that no payment has been received, and allows the foundation team to contact them with verified bank/mobile-money instructions. Staff must confirm receipt before recording it as paid. Do not display invented account numbers or claim a pending pledge is a completed donation.
+## 2. Supabase setup
 
-## F. Go-live checklist
-- [ ] Replace placeholder contact details with verified foundation details.
-- [ ] Add the approved logo, photos and guardian-consented stories.
-- [ ] Create staff accounts and assign least-privilege roles.
-- [ ] Review all RLS policies with a test non-admin account.
-- [ ] Test public contact and volunteer forms.
-- [ ] Test Paystack test-mode initialize, callback, webhook and amount verification.
-- [ ] Confirm private beneficiary files cannot be read publicly.
-- [ ] Add privacy, child safeguarding, donation/refund and terms policies.
-- [ ] Configure custom domain, HTTPS, email sender and monitoring.
-- [ ] Do not publish fabricated impact numbers, beneficiary profiles or partner logos.
+1. Create a Supabase project.
+2. Open **SQL Editor**.
+3. Run the six files in `supabase/migrations/` in this exact order, one at a time:
+   1. `001_initial_schema.sql`
+   2. `002_operations_and_safeguarding.sql`
+   3. `003_public_content_and_case_access.sql`
+   4. `004_case_documents_and_audit.sql`
+   5. `005_partnership_applications.sql`
+   6. `006_campaign_totals.sql`
+4. Wait for each query to succeed before running the next. If one fails, stop and resolve it; do not skip it.
+5. Open **Project Settings → API** (or **API Keys**, depending on the dashboard version) and copy:
+   - Project URL
+   - Publishable key, or legacy `anon` key
+   - Secret key, or legacy `service_role` key
+6. Confirm these two storage buckets exist:
+   - `foundation-media`: public, for approved public website media only.
+   - `beneficiary-private`: private, for restricted case documents.
+7. Under **Authentication → URL Configuration**, you will later add the deployed Vercel website URL as the Site URL and an allowed redirect URL.
+
+### Which Supabase key is which?
+
+- Frontend: publishable key / legacy `anon` key. This is intended for browser use and relies on RLS.
+- Backend: secret key / legacy `service_role` key. This has elevated access and bypasses RLS. Keep it in Render only.
+- These keys are not interchangeable. Never put the secret/service-role key in Vercel, browser code, GitHub or a public document.
+
+## 3. Deploy the backend to Render first
+
+1. Open Render and choose **New → Web Service**.
+2. Connect the repository `kotoorich/ugoekloh-foundations`.
+3. Use these exact settings:
+
+| Render setting | Value |
+|---|---|
+| Runtime | Python |
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
+| Health Check Path | `/api/health` |
+
+4. In **Environment**, add the variables below. Use the same names and spelling.
+
+### Render environment variables (copy the keys exactly)
+
+| Key | Value to enter |
+|---|---|
+| `SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | `YOUR_SUPABASE_SECRET_OR_SERVICE_ROLE_KEY` |
+| `PAYSTACK_SECRET_KEY` | Leave empty until Paystack test mode is ready |
+| `PAYSTACK_CALLBACK_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return` |
+| `FRONTEND_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app` |
+| `ALLOWED_ORIGINS` | `https://YOUR_VERCEL_DOMAIN.vercel.app` |
+
+At this point, if you have not deployed Vercel yet, you can temporarily use the Render-provided service URL for the first deployment and then update the three frontend URL values after Vercel is deployed. The health endpoint itself does not depend on these URLs.
+
+5. Deploy the service.
+6. Copy the exact service URL shown by Render. Example only: `https://ugoekloh-foundation-api.onrender.com`.
+7. Test `https://YOUR_RENDER_SERVICE.onrender.com/api/health`. Expected JSON:
+
+```json
+{
+  "status": "ok",
+  "service": "ugo-ekloh-foundation-api"
+}
+```
+
+8. If it fails, check Render **Logs** before continuing.
+
+## 4. Deploy the frontend to Vercel
+
+1. Open Vercel and choose **Add New → Project**.
+2. Import `kotoorich/ugoekloh-foundations`.
+3. Set:
+
+| Vercel setting | Value |
+|---|---|
+| Framework Preset | Vite |
+| Root Directory | `frontend` |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+| Install Command | `npm install` |
+
+4. Add these three environment variables before deploying:
+
+| Key | Value to enter |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | `YOUR_SUPABASE_PUBLISHABLE_OR_LEGACY_ANON_KEY` |
+| `VITE_API_URL` | `https://YOUR_RENDER_SERVICE.onrender.com` |
+
+5. Deploy and copy the exact Vercel domain assigned to the project.
+6. Never add `SUPABASE_SERVICE_ROLE_KEY` or `PAYSTACK_SECRET_KEY` to Vercel. Vite variables beginning with `VITE_` are exposed to the browser.
+
+## 5. Connect the deployed URLs
+
+After Vercel has given you the real website domain:
+
+1. Supabase → **Authentication → URL Configuration**:
+   - Site URL: your exact Vercel website URL.
+   - Add the same URL to the allowed redirect URLs.
+2. Render → **Environment**:
+   - `FRONTEND_URL`: exact Vercel website URL.
+   - `ALLOWED_ORIGINS`: exact Vercel website URL. If you intentionally use additional preview domains, list them separated by commas.
+   - `PAYSTACK_CALLBACK_URL`: exact Vercel website URL followed by `/donation/return`.
+3. Vercel → **Environment Variables**:
+   - Confirm `VITE_API_URL` is the exact Render service URL, with no extra path.
+4. Save changes and redeploy/restart the relevant service if the host requests it.
+
+Example only (replace all domains with your own):
+
+```env
+# Render
+FRONTEND_URL=https://ugoekloh-foundation.vercel.app
+ALLOWED_ORIGINS=https://ugoekloh-foundation.vercel.app
+PAYSTACK_CALLBACK_URL=https://ugoekloh-foundation.vercel.app/donation/return
+
+# Vercel
+VITE_API_URL=https://ugoekloh-foundation-api.onrender.com
+```
+
+## 6. Paystack (optional until online payments are enabled)
+
+1. Complete Paystack merchant onboarding.
+2. Start with a Paystack test secret key.
+3. Put it in Render as `PAYSTACK_SECRET_KEY` only.
+4. In Paystack webhook settings, use:
+
+`https://YOUR_RENDER_SERVICE.onrender.com/api/payments/paystack/webhook`
+
+5. Test a payment end-to-end. Confirm the backend verifies the transaction and expected GHS amount before it is marked paid.
+6. Do not switch to live credentials until test transactions succeed and Paystack has approved the merchant account.
+
+If Paystack is not configured, the site can record a donation pledge as **pending**. A pending pledge is not a completed payment. Foundation staff must verify receipt before marking it paid. Do not publish unverified bank or mobile-money instructions.
+
+## 7. First deployment checklist
+
+- [ ] All six Supabase migrations completed successfully in order.
+- [ ] Both storage buckets exist with the correct visibility.
+- [ ] Render health endpoint returns the expected JSON.
+- [ ] Vercel website loads.
+- [ ] Supabase authentication URL configuration uses the deployed website domain.
+- [ ] Vercel has only the three frontend variables listed above.
+- [ ] Render has the six backend variables listed above.
+- [ ] No secret/service-role or Paystack key is exposed in Vercel or GitHub.
+- [ ] Initial super-admin account has been provisioned securely.
+- [ ] Contact, volunteer and partnership submissions reach the database.
+- [ ] Manual donation pledge remains pending until verified.
+- [ ] Paystack test transaction is verified before enabling live payments.
+- [ ] Private beneficiary documents cannot be accessed by the public.
+- [ ] Test on desktop and mobile.
+
+## 8. Initial super-admin account
+
+1. Supabase → **Authentication → Users** → add the foundation's first administrator.
+2. Copy that user's actual UUID.
+3. In SQL Editor, run this after replacing the UUID and display name:
+
+```sql
+insert into public.staff_profiles (user_id, full_name, role, is_active)
+values (
+  'PASTE_THE_REAL_AUTH_USER_UUID_HERE',
+  'Foundation Super Administrator',
+  'super_admin',
+  true
+);
+```
+
+Do not use a sample UUID. Do not enable public administrator registration.
+
+## 9. Environment variable source of truth
+
+The repository includes ready-to-copy templates:
+
+- Frontend local template: `frontend/.env.example`
+- Backend local template: `backend/.env.example`
+
+The variable names in those files are the same names to enter in Vercel and Render. Copy the template into a local `.env` file for local development; in hosted dashboards, enter each key/value in the service's Environment Variables screen.
+
+There is intentionally no `DATABASE_URL` in either template: the current backend uses the Supabase client, not a direct PostgreSQL connection.
