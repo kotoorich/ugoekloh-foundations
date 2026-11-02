@@ -53,8 +53,8 @@ def ensure_initial_admin() -> None:
     password = os.getenv("INITIAL_ADMIN_PASSWORD", "")
     full_name = os.getenv("INITIAL_ADMIN_NAME", "Foundation Administrator").strip()
 
-    if not email and not password:
-        print("[admin] Initial admin variables not set; skipping bootstrap.")
+    if not password:
+        print("[admin] Initial admin password is not set; bootstrap skipped.")
         return
     if not email or len(password) < 12:
         raise RuntimeError(
