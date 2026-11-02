@@ -193,7 +193,7 @@ async def paystack_webhook(request: Request):
         refund_data=event.get("data",{})
         ref=refund_data.get("transaction_reference")
         if ref and db:
-            current=db.table("donations").select("id,status").eq("reference",ref).maybe_single().execute().data
+            current=db.table("donations").select("id,status,donor_email,donor_name,amount").eq("reference",ref).maybe_single().execute().data
             if current:
                 refund_status=event["event"].split(".",1)[1]
                 updates={"refund_status":refund_status}
@@ -203,6 +203,11 @@ async def paystack_webhook(request: Request):
                     updates.update({"status":"paid","refunded_at":None})
                 db.table("donations").update(updates).eq("reference",ref).execute()
                 db.table("audit_logs").insert({"action":"paystack_refund_status_updated","entity":"donations","entity_id":current["id"],"details":{"reference":ref,"refund_status":refund_status}}).execute()
+                if refund_status=="processed" and current.get("donor_email"):
+                    refund_subject=f"Your donation refund has been processed ({ref})"
+                    sent=db.table("email_delivery_logs").select("id").eq("recipient",current["donor_email"]).eq("subject",refund_subject).eq("status","sent").limit(1).execute().data or []
+                    if not sent:
+                        await send_email(db,to=current["donor_email"],subject=refund_subject,heading="Your refund has been processed",message=f"Hello {current.get('donor_name') or 'there'}, Paystack has confirmed that the refund for your GHS {Decimal(str(current['amount'])):.2f} donation has been processed. Your bank or payment provider may take additional time to reflect the funds.",category="refund_confirmation")
     elif event.get("event")=="charge.success":
         tx=event.get("data",{}); ref=tx.get("reference")
         if ref and db:
