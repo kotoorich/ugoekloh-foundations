@@ -21,7 +21,7 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Server-side Paystack transaction initialization
 - [x] Server-side transaction verification with amount/currency matching
 - [x] Paystack webhook signature validation
-- [x] Clear pending manual pledge fallback when Paystack is not configured
+- [x] Online Paystack-only donation flow; no offline pledge fallback
 - [x] Programme-only donation checkout: general foundation support or one selected programme\n- [x] Programme totals are recalculated from verified paid donations only
 - [x] Downloadable donor receipt (HTML, printable to PDF); [ ] automated donor confirmation email
 - [x] Admin donation ledger, filters, manual reconciliation, refund recording, CSV export and receipt download
@@ -37,7 +37,7 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Beneficiary case registration, guardian consent fields, case-worker assignment and restricted private document uploads
 - [x] Donation ledger, volunteer and contact-message management (partnership workflow remains basic)
 - [x] Audit-log viewer
-- [ ] Financial, campaign and impact reporting with CSV/PDF export
+- [ ] Financial and impact reporting with CSV/PDF export
 - [x] Foundation profile/contact/payment-instruction settings (branding and email-provider settings pending)
 - [ ] Dashboard charts and date-range filters
 
