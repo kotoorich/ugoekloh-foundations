@@ -10,7 +10,7 @@ This is the detailed deployment checklist. The root `README.md` is the overview;
 | Render | Private Python FastAPI backend | Supabase service-role secret, API URLs, optional Paystack secret |
 | Vercel | Public React/Vite frontend | Supabase public/anon key and Render API URL |
 
-**Important: this project does not currently need a `DATABASE_URL`.** The backend in `backend/main.py` connects through the Supabase Python client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not add a PostgreSQL connection string unless the backend is deliberately changed to use a direct PostgreSQL driver/SQLAlchemy.
+The frontend and API use the Supabase client. The backend additionally uses the private `SUPABASE_DB_URL` Session Pooler connection at startup so it can apply database migrations automatically. You do not need to run SQL manually.
 
 ## 2. Automatic Supabase setup
 
