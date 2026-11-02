@@ -13,7 +13,7 @@ from email_service import send_email
 load_dotenv()
 app = FastAPI(title="Ugo E Kloh Foundation API", version="1.0.0")
 origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",") if x.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET","POST","OPTIONS"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"], allow_headers=["*"])
 SUPABASE_URL=os.getenv("SUPABASE_URL","")
 SUPABASE_SERVICE_ROLE_KEY=os.getenv("SUPABASE_SERVICE_ROLE_KEY","")
 PAYSTACK_SECRET_KEY=os.getenv("PAYSTACK_SECRET_KEY","")
