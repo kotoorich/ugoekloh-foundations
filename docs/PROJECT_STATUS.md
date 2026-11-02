@@ -14,7 +14,7 @@ Support children recovering from burn injuries and other vulnerable children thr
 - [x] FAQs
 - [x] Published impact reports
 - [x] Policy-page publishing module (approved policy text still must be supplied)
-- [ ] Newsletter subscription and email notifications
+- [x] Newsletter subscription capture and admin list; [ ] email notifications and unsubscribe automation
 - [ ] Search, SEO metadata, sitemap and social sharing metadata
 
 ## Donations and payments
@@ -23,8 +23,8 @@ Support children recovering from burn injuries and other vulnerable children thr
 - [x] Paystack webhook signature validation
 - [x] Clear pending manual pledge fallback when Paystack is not configured
 - [ ] Campaign selection in donation checkout
-- [ ] Donor confirmation email and downloadable receipt
-- [ ] Admin donation ledger, filters, reconciliation, refund recording and export
+- [x] Downloadable donor receipt (HTML, printable to PDF); [ ] automated donor confirmation email
+- [x] Admin donation ledger, filters, manual reconciliation, refund recording, CSV export and receipt download
 - [ ] End-to-end test-mode and live-mode verification
 
 ## Administration
@@ -47,7 +47,7 @@ Support children recovering from burn injuries and other vulnerable children thr
 - [x] `beneficiary-private` private bucket for restricted case files
 - [x] Beneficiary and staff profile data tables
 - [ ] Review policies with separate anonymous, staff, finance, case-worker and super-admin test accounts
-- [ ] Add file ownership/path controls for private case files
+- [x] Add file ownership/path controls for private case files
 - [ ] Add documented retention, consent withdrawal and access logging workflows
 
 ## Infrastructure
