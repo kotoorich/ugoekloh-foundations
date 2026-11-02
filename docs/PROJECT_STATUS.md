@@ -27,7 +27,7 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Programme-only donation checkout: general foundation support or one selected programme
 - [x] Programme totals are recalculated from verified paid donations only
 - [x] Downloadable donor receipt (HTML, printable to PDF); [ ] automated donor confirmation email
-- [x] Admin donation ledger, filters, manual reconciliation, refund recording, CSV export and receipt download
+- [x] Admin donation ledger, filters, Paystack verification, refund recording, CSV export and receipt download
 - [ ] End-to-end test-mode and live-mode verification, including one general, one programme donation
 
 ## Administration
@@ -35,15 +35,15 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Basic authenticated CRUD for programmes, projects, news, events and partners
 - [x] Public media bucket upload from admin, including programme cover-image upload and preview
 - [x] Guided edit/create forms with human-readable fields, image previews and direct upload-to-field workflow
-- [x] Responsive admin navigation, mobile section picker, dashboard shortcuts and record thumbnails
-- [x] Owner-managed public contact details and manual donation instructions
+- [x] Responsive admin navigation, icon-led responsive hamburger navigation, dashboard shortcuts and record thumbnails
+- [x] Owner-managed public foundation contact details
 - [x] Staff account creation and activation/deactivation by super-admin
 - [x] Role-specific admin navigation and permission enforcement
 - [x] Beneficiary case registration, guardian consent fields, case-worker assignment and restricted private document uploads
 - [x] Donation ledger, volunteer and contact-message management (partnership workflow remains basic)
 - [x] Audit-log viewer
 - [ ] Financial and impact reporting with CSV/PDF export
-- [x] Foundation profile/contact/payment-instruction settings (branding and email-provider settings pending)
+- [x] Foundation profile and contact settings (branding and email-provider settings pending)
 - [ ] Dashboard charts and date-range filters
 
 ## Supabase and safeguarding
