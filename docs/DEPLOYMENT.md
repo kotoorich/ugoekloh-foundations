@@ -10,7 +10,7 @@ This is the detailed deployment checklist. The root `README.md` is the overview;
 | Render | Private Python FastAPI backend | Supabase service-role secret, API URLs, optional Paystack secret |
 | Vercel | Public React/Vite frontend | Supabase public/anon key and Render API URL |
 
-The frontend and API use the Supabase client. The backend additionally uses the private `SUPABASE_DB_URL` Session Pooler connection at startup so it can apply database migrations automatically. You do not need to run SQL manually.
+The frontend and API use the Supabase client. The backend additionally uses the private `SUPABASE_DB_URL` Session Pooler connection at startup so it can apply database migrations automatically. You do not need to run SQL manually. The backend runtime is pinned to **Python 3.11.11** in `backend/.python-version` and `render.yaml`; keep this pin so Render does not select Python 3.14 and attempt a source build of `pydantic-core`.
 
 ## 2. Automatic Supabase setup
 
@@ -34,7 +34,7 @@ The Supabase project must be active and the database credentials must have permi
 
 | Render setting | Value |
 |---|---|
-| Runtime | Python |
+| Runtime | Python 3.11.11 (pinned by `backend/.python-version`) |
 | Root Directory | `backend` |
 | Build Command | `pip install -r requirements.txt` |
 | Start Command | `uvicorn main:app --host 0.0.0.0 --port $PORT` |
@@ -72,7 +72,7 @@ At this point, if you have not deployed Vercel yet, you can temporarily use the 
 }
 ```
 
-8. If it fails, check Render **Logs** before continuing.
+8. If it fails, check Render **Logs** before continuing. If Render still reports Python 3.14, confirm the service Root Directory is `backend`, then trigger a **Clear build cache & deploy** so it reads the committed Python version pin.
 
 ## 4. Deploy the frontend to Vercel
 
