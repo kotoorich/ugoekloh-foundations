@@ -27,7 +27,7 @@ For local development, install Git, Node.js LTS and Python 3.11.
 
 Repository: https://github.com/kotoorich/ugoekloh-foundations
 
-## 3. Exact environment variables — use this as your checklist
+## Exact environment variables — use this as your checklist
 
 You do **not** need `DATABASE_URL`. This version connects to Supabase using its project URL and API keys.
 
