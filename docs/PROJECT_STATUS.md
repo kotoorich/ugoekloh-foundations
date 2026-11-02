@@ -15,7 +15,11 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] FAQs
 - [x] Published impact reports
 - [x] Policy-page publishing module (approved policy text still must be supplied)
-- [x] Newsletter subscription capture and admin list; [ ] email notifications and unsubscribe automation
+- [x] Newsletter subscription capture and admin list
+- [x] Admin email ON/OFF control and manual Gmail API (primary) / SendPulse (alternative) provider selection
+- [x] Central email sender, branded HTML template, provider test action and sent/failed/skipped delivery log
+- [x] Contact, volunteer, partnership, newsletter welcome, donor payment confirmation, staff invitation and case-assignment email triggers
+- [ ] Newsletter campaign composer, unsubscribe links/automation and consent lifecycle
 - [ ] Search, SEO metadata, sitemap and social sharing metadata
 - [x] Footer navigation checked against registered routes; contact email and owner-managed phone/address are actionable when configured
 
@@ -26,9 +30,11 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Online Paystack-only donation flow; no offline pledge fallback
 - [x] Programme-only donation checkout: general foundation support or one selected programme
 - [x] Programme totals are recalculated from verified paid donations only
-- [x] Downloadable donor receipt (HTML, printable to PDF); [ ] automated donor confirmation email
+- [x] Downloadable donor receipt (HTML, printable to PDF)
+- [x] Donor confirmation email trigger after verified successful payment (requires configured provider)
 - [x] Admin donation ledger, filters, Paystack verification, refund recording, CSV export and receipt download
 - [ ] End-to-end test-mode and live-mode verification, including one general, one programme donation
+- [ ] Verify payment/email idempotency under webhook and return-page race conditions
 
 ## Administration
 - [x] Supabase email/password admin sign-in
@@ -43,7 +49,8 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Donation ledger, volunteer and contact-message management (partnership workflow remains basic)
 - [x] Audit-log viewer
 - [ ] Financial and impact reporting with CSV/PDF export
-- [x] Foundation profile and contact settings (branding and email-provider settings pending)
+- [x] Foundation profile and contact settings
+- [x] Email provider controls and delivery log
 - [ ] Dashboard charts and date-range filters
 
 ## Supabase and safeguarding
@@ -63,6 +70,8 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Local development and deployment guides
 - [x] GitHub Actions frontend build and backend compile validation
 - [ ] Add automated unit/integration tests beyond CI build and compile checks
+- [ ] Configure and verify Gmail OAuth production publishing/verification and SendPulse SMTP approval/sender authentication
+- [ ] Test each email workflow with email OFF, Gmail ON, SendPulse ON and provider failure
 - [ ] Add error monitoring, backups, uptime monitoring and production security review
 
 ## Go-live blockers
