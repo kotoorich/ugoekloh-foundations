@@ -22,6 +22,8 @@ A full-stack foundation website for publishing approved updates, receiving donat
 | Render | Python API hosting | https://render.com |
 | Vercel | React website hosting | https://vercel.com |
 | Paystack | Online donations, when enabled | https://paystack.com |
+| Google Cloud / Gmail API | Primary transactional email provider | https://console.cloud.google.com/ |
+| SendPulse | Alternative transactional email provider | https://sendpulse.com/ |
 
 For local development, install Git, Node.js LTS and Python 3.11. The Render backend is pinned to Python 3.11.11 in `backend/.python-version` to prevent an incompatible default runtime from triggering a Rust source build.
 
@@ -45,7 +47,7 @@ VITE_API_URL=https://YOUR_RENDER_SERVICE.onrender.com
 
 All three are required. Replace the example URLs and key with the values from your own Supabase and Render projects.
 
-### Render — backend (10 variables, including first-admin setup)
+### Render — backend (19 variables, including first-admin and email setup)
 
 Add these under **Render → Your Web Service → Environment**:
 
@@ -60,6 +62,15 @@ FRONTEND_URL=https://YOUR_VERCEL_DOMAIN.vercel.app
 ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN.vercel.app
 PAYSTACK_SECRET_KEY=
 PAYSTACK_CALLBACK_URL=https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REFRESH_TOKEN=
+GMAIL_SENDER_EMAIL=
+SENDPULSE_CLIENT_ID=
+SENDPULSE_CLIENT_SECRET=
+SENDPULSE_SENDER_EMAIL=
+EMAIL_SENDER_NAME=Ugo E Kloh Foundation
+EMAIL_ADMIN_NOTIFY_TO=
 ```
 
 | Variable | Required? | Purpose |
@@ -751,3 +762,102 @@ The call-line field is added by migration `013_public_contact_and_content_images
 ### Images on public pages
 
 Administrators can attach images to programmes, projects, news, events, partner profiles, gallery entries and impact reports. Use the image preview in the editor to confirm the correct image before saving. Gallery images remain hidden from the public until they are published and guardian consent is verified. Never upload or publish identifiable child photographs without appropriate guardian consent and safeguarding approval.
+
+
+---
+
+
+## Email delivery setup (Gmail API primary, SendPulse alternative)
+
+The Admin Dashboard now has **Email settings**. Email mode is OFF by default. Turn it ON and select exactly one provider: **Gmail API (Primary)** or **SendPulse (Alternative)**. The application does not silently switch providers. Provider credentials are private Render environment variables; never enter them in the browser or commit them to GitHub.
+
+When email mode is OFF, public forms still save the submission and show a normal receipt message such as **“Your submission has been received successfully.”** They do not mention email being disabled. When email mode is ON, the public confirmation mentions an email only if the provider accepted the message. A provider failure never prevents the underlying form or donation record from being saved.
+
+### A. Create and configure the primary Gmail API sender
+
+1. Sign in to the Google account that will send foundation emails.
+2. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project, for example **Ugo E Kloh Foundation Mail**.
+3. Select that project and open **APIs & Services → Library**. Search for **Gmail API** and click **Enable**.
+4. Open **Google Auth Platform**. Configure the app name, support email and developer contact email. Choose **External** if the sender account is not restricted to a Google Workspace organisation.
+5. Under **Audience**, add the Gmail account that will authorize the sender as a test user while the app is in testing.
+6. Under **Data Access**, add the scope `https://www.googleapis.com/auth/gmail.send`.
+7. Under **Clients**, create an OAuth client. Choose **Web application** and add this authorised redirect URI:
+   `https://developers.google.com/oauthplayground`
+8. Copy the OAuth **Client ID** and **Client Secret**. Store them securely.
+9. Open [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground). Open its settings (gear icon), enable **Use your own OAuth credentials**, and enter the Client ID and Client Secret.
+10. In Step 1, enter/select the Gmail send scope `https://www.googleapis.com/auth/gmail.send`, authorize with the foundation sender account and grant access.
+11. In Step 2, exchange the authorization code for tokens. Copy the **refresh_token**. Treat it as a password.
+12. In Render → your API service → **Environment**, add:
+   - `GOOGLE_CLIENT_ID` = OAuth Client ID
+   - `GOOGLE_CLIENT_SECRET` = OAuth Client Secret
+   - `GOOGLE_REFRESH_TOKEN` = OAuth refresh token
+   - `GMAIL_SENDER_EMAIL` = the exact Gmail address that granted permission
+13. Save and redeploy/restart the Render service. Do not add these values to Vercel, frontend variables, source code or GitHub.
+14. In Admin → Email settings, select **Gmail API — Primary**, turn email mode ON, save, then send a test email to an address you control.
+
+**Google OAuth testing warning:** External OAuth apps left in Testing can issue refresh tokens that expire after seven days for Gmail scopes. Before relying on ongoing production sending, review Google's publishing/verification requirements and move the OAuth app to the appropriate production status. Gmail API sending is subject to Google's account and API limits. A successful API response means Google accepted the message for sending; it is not proof that the recipient read it.
+
+Official references: [Gmail API enablement and OAuth quickstart](https://developers.google.com/workspace/gmail/api/quickstart/python), [Gmail messages.send](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/send), [Google server-side OAuth](https://developers.google.com/identity/protocols/oauth2/web-server).
+
+### B. Create and configure SendPulse (alternative sender)
+
+1. Create an account at [SendPulse](https://sendpulse.com/).
+2. Confirm the account email and complete the profile information requested in the SMTP section.
+3. Open **SMTP** in the SendPulse dashboard and complete the sender/profile approval process. SendPulse may review the intended use and list-collection method before activating SMTP sending.
+4. Add and verify a sender email address under SMTP sender settings. Use an address you control.
+5. For better deliverability, add the sending domain and publish the SPF, DKIM and any CNAME/DNS records that SendPulse provides. Do not guess DNS values; copy the exact records from your SendPulse dashboard and verify them there.
+6. Open **Account Settings → API** (or the API/SMTP integration section shown in your account). Create/copy the API **Client ID** and **Client Secret** used for OAuth client-credentials authentication. Do not confuse these with an SMTP mailbox password.
+7. In Render → your API service → **Environment**, add:
+   - `SENDPULSE_CLIENT_ID` = SendPulse API Client ID
+   - `SENDPULSE_CLIENT_SECRET` = SendPulse API Client Secret
+   - `SENDPULSE_SENDER_EMAIL` = the verified SendPulse sender address
+8. Save and redeploy/restart Render.
+9. In Admin → Email settings, select **SendPulse — Alternative**, turn email mode ON, save, and send a test email.
+
+SendPulse SMTP API sends transactional email through its API. The application obtains a short-lived access token from SendPulse and then submits the email. Account approval and sender verification are controlled by SendPulse.
+
+Official references: [SendPulse SMTP setup](https://sendpulse.com/knowledge-base/smtp/setup-smtp-server), [SendPulse API](https://sendpulse.com/integrations/api).
+
+### C. Shared Render email settings
+
+Add these backend variables in Render. The same template is in `backend/.env.example`:
+
+```env
+# Gmail API — primary
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REFRESH_TOKEN=
+GMAIL_SENDER_EMAIL=
+
+# SendPulse — alternative
+SENDPULSE_CLIENT_ID=
+SENDPULSE_CLIENT_SECRET=
+SENDPULSE_SENDER_EMAIL=
+
+# Shared sender identity and optional internal alerts
+EMAIL_SENDER_NAME=Ugo E Kloh Foundation
+EMAIL_ADMIN_NOTIFY_TO=
+```
+
+`EMAIL_ADMIN_NOTIFY_TO` is optional. If set, new contact, volunteer and partnership submissions also trigger an internal alert to that address. Keep all provider secrets in Render only.
+
+### D. How the Admin email controls work
+
+- Email mode OFF: no provider is called; submission and payment records continue to be saved. The delivery log records a skipped email. Public users see only the normal submission/payment confirmation.
+- Email mode ON + Gmail selected: Gmail API is used as the primary provider.
+- Email mode ON + SendPulse selected: SendPulse is used as the alternative provider.
+- Provider failure: the submission remains saved; the public message does not falsely claim that an email was sent. The failure is recorded for administrators.
+- Provider selection is manual. There is no automatic Gmail-to-SendPulse fallback in this version.
+- Use **Send a test email** after configuring a provider. Check the recent email activity list for sent, failed or skipped records.
+
+The email settings row and delivery log are created by migration `014_email_delivery_and_settings.sql` at backend startup. Do not manually create these tables. Provider credentials are never stored in the database. The HTML email layout and message template are maintained in `backend/email_service.py`.
+
+### E. Email workflows currently connected
+
+- Contact form acknowledgement and optional internal alert.
+- Volunteer application acknowledgement and optional internal alert.
+- Partnership enquiry acknowledgement and optional internal alert.
+- Newsletter subscription welcome message.
+- Donor confirmation after Paystack payment verification.
+
+Case assignment alerts, staff invitation/password emails, full newsletter campaign composition, unsubscribe links, scheduled campaigns, retries and automatic provider failover remain follow-up implementation work. Do not assume those workflows are active until separately implemented and tested.
