@@ -140,9 +140,13 @@ async def verify_donation(reference: str):
     if int(tx.get("amount",0))!=expected or tx.get("currency")!="GHS": raise HTTPException(400,"Transaction amount or currency does not match.")
     if donation.get("status") != "paid":
         client.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",reference).execute()
-        await send_email(client,to=donation["donor_email"],subject="Your donation has been received",heading="Thank you for your donation",message=f"Thank you {donation.get('donor_name') or 'for your support'}. Your donation of GHS {Decimal(str(donation['amount'])):.2f} has been verified successfully.",category="donation_confirmation")
-    sent_log=client.table("email_delivery_logs").select("id").eq("recipient",donation["donor_email"]).eq("category","donation_confirmation").eq("status","sent").limit(1).execute().data or []
-    return {"status":"paid","reference":reference,"email_sent":bool(sent_log)}
+    email_subject=f"Your donation has been received ({reference})"
+    sent_log=client.table("email_delivery_logs").select("id").eq("recipient",donation["donor_email"]).eq("subject",email_subject).eq("status","sent").limit(1).execute().data or []
+    email_sent=bool(sent_log)
+    if not email_sent:
+        mail_result=await send_email(client,to=donation["donor_email"],subject=email_subject,heading="Thank you for your donation",message=f"Thank you {donation.get('donor_name') or 'for your support'}. Your donation of GHS {Decimal(str(donation['amount'])):.2f} has been verified successfully.",category="donation_confirmation")
+        email_sent=bool(mail_result.get("sent"))
+    return {"status":"paid","reference":reference,"email_sent":email_sent}
 
 @app.post("/api/payments/paystack/webhook")
 async def paystack_webhook(request: Request):
@@ -160,7 +164,10 @@ async def paystack_webhook(request: Request):
             if donation and tx.get("status")=="success" and tx.get("currency")=="GHS" and int(tx.get("amount",0))==int(Decimal(str(donation["amount"]))*100):
                 if donation.get("status") != "paid":
                     db.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",ref).execute()
-                    await send_email(db,to=donation["donor_email"],subject="Your donation has been received",heading="Thank you for your donation",message=f"Thank you {donation.get('donor_name') or 'for your support'}. Your donation of GHS {Decimal(str(donation['amount'])):.2f} has been verified successfully.",category="donation_confirmation")
+                email_subject=f"Your donation has been received ({ref})"
+                sent_log=db.table("email_delivery_logs").select("id").eq("recipient",donation["donor_email"]).eq("subject",email_subject).eq("status","sent").limit(1).execute().data or []
+                if not sent_log:
+                    await send_email(db,to=donation["donor_email"],subject=email_subject,heading="Thank you for your donation",message=f"Thank you {donation.get('donor_name') or 'for your support'}. Your donation of GHS {Decimal(str(donation['amount'])):.2f} has been verified successfully.",category="donation_confirmation")
     return {"received":True}
 
 
