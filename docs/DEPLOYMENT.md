@@ -152,7 +152,8 @@ The public donation flow accepts online Paystack payments only. If Paystack is n
 - [ ] No secret/service-role or Paystack key is exposed in Vercel or GitHub.
 - [ ] Initial super-admin was created from the private Render environment variables.
 - [ ] Contact, volunteer and partnership submissions reach the database.
-- [ ] Test one general foundation donation and one programme donation; confirm that only the selected programme receives its verified amount.\n- [ ] Confirm the admin programme editor can upload a cover image from a phone/computer, preview it and save it without manually copying a storage path.
+- [ ] Test one general foundation donation and one programme donation; confirm that only the selected programme receives its verified amount.
+- [ ] Confirm the admin programme editor can upload a cover image from a phone/computer, preview it and save it without manually copying a storage path.
 - [ ] Paystack test transaction is verified before enabling live payments.
 - [ ] Private beneficiary documents cannot be accessed by the public.
 - [ ] Test on desktop and mobile.
