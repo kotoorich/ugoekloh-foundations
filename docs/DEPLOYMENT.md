@@ -60,7 +60,7 @@ This is the detailed deployment checklist. The root `README.md` is the overview;
 | Key | Value to enter |
 |---|---|
 | `SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
-| `SUPABASE_SERVICE_ROLE_KEY` | `YOUR_SUPABASE_SECRET_OR_SERVICE_ROLE_KEY` |
+| `SUPABASE_SERVICE_ROLE_KEY` | `YOUR_SUPABASE_SERVICE_ROLE_KEY` |
 | `PAYSTACK_SECRET_KEY` | Leave empty until Paystack test mode is ready |
 | `PAYSTACK_CALLBACK_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return` |
 | `FRONTEND_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app` |
