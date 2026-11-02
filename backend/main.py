@@ -355,7 +355,7 @@ async def create_staff(payload: StaffCreateRequest, request: Request):
         if not user: raise HTTPException(502,"The identity provider did not return a new user.")
         client.table("staff_profiles").insert({"user_id":user.id,"full_name":payload.full_name,"role":payload.role,"is_active":True,"must_change_password":True}).execute()
         client.table("audit_logs").insert({"actor":actor.id,"action":"staff_created","entity":"staff_profiles","entity_id":user.id,"details":{"role":payload.role,"email":payload.email}}).execute()
-        mail_result=await send_email(client,to=str(payload.email),subject="Your foundation staff account is ready",heading="Welcome to the foundation team",message=f"Your staff account has been created with the role {payload.role.replace('_',' ')}. Contact the administrator through the agreed secure channel for your temporary sign-in details. You will be asked to update your password when that control is enabled.",category="staff_invitation")
+        mail_result=await send_email(client,to=str(payload.email),subject="Your foundation staff account is ready",heading="Welcome to the foundation team",message=f"Your staff account has been created with the role {payload.role.replace('_',' ')}. Contact the administrator through the agreed secure channel for your temporary sign-in details. You must change this temporary password the first time you sign in.",category="staff_invitation")
         return {"ok":True,"user_id":user.id,"email":payload.email,"role":payload.role,"email_sent":bool(mail_result.get("sent"))}
     except HTTPException:
         raise
