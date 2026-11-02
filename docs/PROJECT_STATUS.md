@@ -20,6 +20,7 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Central email sender, branded HTML template, provider test action and sent/failed/skipped delivery log
 - [x] Contact, volunteer, partnership, newsletter welcome, donor payment confirmation, staff invitation and case-assignment email triggers
 - [ ] Newsletter campaign composer, unsubscribe links/automation and consent lifecycle
+- [ ] Password reset/first-login enforcement email flow
 - [ ] Search, SEO metadata, sitemap and social sharing metadata
 - [x] Footer navigation checked against registered routes; contact email and owner-managed phone/address are actionable when configured
 
