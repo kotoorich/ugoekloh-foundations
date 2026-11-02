@@ -8,8 +8,8 @@ A full-stack foundation website for publishing approved updates, receiving donat
 
 - Public website: Home, About, Programmes, Campaigns, Stories, News, Events, Gallery, Impact Reports, FAQs, Policies and Contact.
 - Get involved: Volunteer applications, partnership enquiries and newsletter subscriptions.
-- Donations: Paystack checkout, server-side verification, campaign selection, pending manual pledges and downloadable receipts.
-- Admin workspace: Content, donation ledger, enquiries, staff accounts and foundation settings.
+- Donations: Paystack checkout, server-side verification, one clear destination per gift (general foundation support, one campaign, or one programme), pending manual pledges and downloadable receipts.
+- Admin workspace: Guided content editing, direct image uploads with previews, donation ledger with destination labels, enquiries, staff accounts and foundation settings.
 - Child case management: Guardian consent records, case-worker assignment and private case-document uploads.
 - Supabase database, authentication, row-level security and separate public/private storage buckets.
 
@@ -132,7 +132,7 @@ The backend applies the numbered SQL files in `supabase/migrations/` automatical
 - On the first deployment, it creates the schema, security policies, indexes, triggers and storage buckets.
 - It records completed migrations in `public.foundation_schema_migrations`.
 - On later redeployments, it applies only migration files that have not run before. Existing records are not deleted.
-- New database changes are delivered as a new numbered SQL migration file; do not edit an already-applied migration.
+- New database changes are delivered as a new numbered SQL migration file; do not edit an already-applied migration. Migration `007_directed_programme_donations.sql` adds programme-directed giving and separately recalculates campaign/programme totals from verified paid donations.
 
 **One-time connection setting:** add `SUPABASE_DB_URL` to Render. In Supabase, open **Connect → Session pooler**, copy the URI, and replace its password placeholder with the database password. This is a private backend secret; never put it in Vercel or GitHub. Follow the same instructions in [the deployment guide](docs/DEPLOYMENT.md).
 
