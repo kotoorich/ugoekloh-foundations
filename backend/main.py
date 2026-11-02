@@ -62,7 +62,7 @@ def home():
 @app.get("/api/public/programmes")
 def public_programmes():
     if not db:return {"items":[]}
-    items=db.table("programmes").select("id,title,slug,category,description,amount_raised,image_path,status").eq("status","published").in_("slug",["fire-safety-in-the-home","children-and-fire-management-at-home"]).order("created_at").execute().data
+    items=db.table("programmes").select("id,title,slug,category,description,amount_raised,image_path,status").eq("status","published").order("created_at").execute().data
     return {"items":items or []}
 
 @app.post("/api/public/contact")
