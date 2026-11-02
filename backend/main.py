@@ -121,3 +121,70 @@ async def paystack_webhook(request: Request):
             if donation and tx.get("status")=="success" and tx.get("currency")=="GHS" and int(tx.get("amount",0))==int(Decimal(str(donation["amount"]))*100):
                 db.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",ref).execute()
     return {"received":True}
+
+
+class StaffCreateRequest(BaseModel):
+    email: EmailStr
+    full_name: str = Field(min_length=2,max_length=120)
+    role: str = Field(pattern="^(admin|editor|finance|case_worker|staff)$")
+    password: str = Field(min_length=12,max_length=128)
+
+class NewsletterRequest(BaseModel):
+    email: EmailStr
+
+def require_super_admin(request: Request):
+    client=database()
+    header=request.headers.get("authorization","")
+    if not header.lower().startswith("bearer "):
+        raise HTTPException(401,"Sign in is required.")
+    token=header.split(" ",1)[1]
+    try:
+        user=client.auth.get_user(token).user
+    except Exception:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    if not user:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    profile=client.table("staff_profiles").select("role,is_active").eq("user_id",user.id).maybe_single().execute().data
+    if not profile or profile.get("role")!="super_admin" or not profile.get("is_active"):
+        raise HTTPException(403,"Only an active super administrator can create staff accounts.")
+    return user
+
+@app.get("/api/public/news")
+def public_news():
+    if not db:return {"items":[]}
+    items=db.table("news").select("id,title,slug,excerpt,body,cover_image_path,published_at").eq("status","published").order("published_at",desc=True).limit(50).execute().data
+    return {"items":items or []}
+
+@app.get("/api/public/events")
+def public_events():
+    if not db:return {"items":[]}
+    items=db.table("events").select("id,title,description,venue,starts_at,ends_at").eq("status","published").order("starts_at").limit(50).execute().data
+    return {"items":items or []}
+
+@app.get("/api/public/settings")
+def public_settings():
+    if not db:return {}
+    result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,address,default_currency").eq("id",1).maybe_single().execute()
+    return result.data or {}
+
+@app.post("/api/public/newsletter")
+def newsletter(payload: NewsletterRequest):
+    client=database()
+    client.table("newsletter_subscribers").upsert({"email":payload.email,"status":"subscribed"},on_conflict="email").execute()
+    return {"ok":True,"message":"You are subscribed to foundation updates."}
+
+@app.post("/api/admin/staff")
+def create_staff(payload: StaffCreateRequest, request: Request):
+    require_super_admin(request)
+    client=database()
+    try:
+        created=client.auth.admin.create_user({"email":payload.email,"password":payload.password,"email_confirm":True,"user_metadata":{"full_name":payload.full_name}})
+        user=created.user
+        if not user: raise HTTPException(502,"The identity provider did not return a new user.")
+        client.table("staff_profiles").insert({"user_id":user.id,"full_name":payload.full_name,"role":payload.role,"is_active":True}).execute()
+        client.table("audit_logs").insert({"actor":user.id,"action":"staff_created","entity":"staff_profiles","entity_id":user.id,"details":{"role":payload.role,"email":payload.email}}).execute()
+        return {"ok":True,"user_id":user.id,"email":payload.email,"role":payload.role}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400,"Could not create the staff account. Check that the email is not already registered and the service configuration is valid.") from exc
