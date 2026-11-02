@@ -48,6 +48,10 @@ The Supabase project must be active and the database credentials must have permi
 |---|---|
 | `SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `YOUR_SUPABASE_SERVICE_ROLE_KEY` |
+| `SUPABASE_DB_URL` | Yes | Private Supabase Session Pooler URI used to run database migrations |
+| `INITIAL_ADMIN_EMAIL` | First setup | Email address for the initial super administrator |
+| `INITIAL_ADMIN_PASSWORD` | First setup | Initial administrator password (12+ characters) |
+| `INITIAL_ADMIN_NAME` | First setup | Administrator display name |
 | `SUPABASE_DB_URL` | Supabase Session Pooler connection URI |
 | `INITIAL_ADMIN_EMAIL` | Email for the first foundation super-admin |
 | `INITIAL_ADMIN_PASSWORD` | Long random password (minimum 12 characters) |
