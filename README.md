@@ -491,7 +491,7 @@ There is no public staff registration. Do not share accounts. Individual account
 | Role | Main responsibilities and access |
 |---|---|
 | Super administrator | Full workspace access, staff account creation and platform oversight |
-| Administrator | Public content, foundation settings, enquiries, partnerships and child-case oversight |
+| Administrator | All workspace modules and employee operations: staff, finance, donations, child cases, content, settings, enquiries, partnerships and audit trail |
 | Editor | Programmes, projects, news, events, partners, FAQs, gallery, impact reports and policy pages |
 | Finance | Donation ledger, payment verification, receipts and authorised exports |
 | Case worker | Child cases assigned to that worker only |
@@ -528,7 +528,7 @@ The **Fundraising goal (GHS)** field may be left blank.
 - General foundation donations and donations directed to another programme are kept separate.
 - Never type a raised amount manually. The amount is calculated from verified donation records.
 
-Only publish a target that the foundation has approved and can explain to donors.
+Only publish a target that the foundation has approved and can explain to donors.\n\n### Images across the public website\n\nThe homepage and About page also display recent images from the Gallery when those items are **Published** and **Guardian consent verified**. Programme, news, project and partner images appear on their respective pages when uploaded in their content editor. Add several varied, high-quality, relevant images through **Gallery** and the relevant content sections to make the site more visual. Use accurate alt text, confirm permission before publishing, and never upload identifiable child photographs without documented guardian consent and safeguarding approval.
 
 ## 23. Child cases — registration, assignment and follow-up
 
