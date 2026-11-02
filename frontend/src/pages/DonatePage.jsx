@@ -70,7 +70,7 @@ export default function DonatePage(){
             {destinations.map(item=><option value={item.id} key={item.id}>{item.title}</option>)}
           </select>
           {!loadingDestinations&&destinations.length===0&&<small>No active {destinationType}s are available right now. Please choose another destination.</small>}
-          {selected&&<div className="selected-destination">{selected.image_path&&<img src={mediaUrl(selected.image_path)} alt=""/>}<div><strong>{selected.title}</strong><p>{selected.description}</p>{destinationType==='campaign'&&<small>Goal: GHS {Number(selected.goal_amount||0).toLocaleString('en-GH')}</small>}</div></div>}
+          {selected&&<div className="selected-destination">{selected.image_path&&<img src={mediaUrl(selected.image_path)} alt=""/>}<div><strong>{selected.title}</strong><p>{selected.description}</p>{destinationType==='campaign'&&<small>Goal: GHS {Number(selected.goal_amount||0).toLocaleString('en-GH')}</small>}{destinationType==='programme'&&<small>GHS {Number(selected.amount_raised||0).toLocaleString('en-GH')} raised for this programme</small>}</div></div>}
         </div>}
         <div className="donation-section-divider"/>
         <label>Choose an amount (GHS)</label>
