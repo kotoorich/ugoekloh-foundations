@@ -257,7 +257,7 @@ async def newsletter(payload: NewsletterRequest):
     return {"ok":True,"message":"You are subscribed to foundation updates.","email_sent":bool(mail_result.get("sent"))}
 
 @app.post("/api/admin/staff")
-def create_staff(payload: StaffCreateRequest, request: Request):
+async def create_staff(payload: StaffCreateRequest, request: Request):
     actor=require_super_admin(request)
     client=database()
     try:
