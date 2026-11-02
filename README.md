@@ -113,40 +113,22 @@ These are sample formats, not real credentials.
 
 **Do I need DATABASE_URL? No.** The current FastAPI backend connects through the Supabase Python client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not add a PostgreSQL `DATABASE_URL`; it is not read by this version of the application.
 
-## 4. Run all six SQL migrations
+## 4. Automatic database setup — no manual SQL steps
 
-Open the repository and locate the folder supabase/migrations. Run these files in the exact order below:
+The backend now applies the SQL files in `supabase/migrations/` automatically when it starts:
 
-1. 001_initial_schema.sql
-2. 002_operations_and_safeguarding.sql
-3. 003_public_content_and_case_access.sql
-4. 004_case_documents_and_audit.sql
-5. 005_partnership_applications.sql
-6. 006_campaign_totals.sql
+- On the first deployment, it creates the schema, security policies, indexes, triggers and storage buckets.
+- It records completed migrations in `public.foundation_schema_migrations`.
+- On later redeployments, it applies only migration files that have not run before. Existing records are not deleted.
+- New database changes are delivered as a new numbered SQL migration file; do not edit an already-applied migration.
 
-For each file:
+**One-time connection setting:** add `SUPABASE_DB_URL` to Render. In Supabase, open **Connect → Session pooler**, copy the URI, and replace its password placeholder with the database password. This is a private backend secret; never put it in Vercel or GitHub.
 
-1. Open your Supabase project.
-2. Click **SQL Editor** in the left navigation.
-3. Click **New query**.
-4. Open the relevant SQL file in GitHub.
-5. Click the copy/raw view and copy the complete SQL content.
-6. Paste it into the Supabase SQL Editor.
-7. Click **Run**.
-8. Confirm that it completes successfully before moving to the next file.
+The migration runner uses this private connection to apply schema changes. The Supabase service-role key alone cannot create PostgreSQL tables or policies through the normal REST API, which is why this separate database connection is necessary.
 
-Do not skip a migration or run them out of order. If one fails, stop and resolve the error before continuing.
-
-### Confirm the storage buckets
-
-Open **Storage** in Supabase. The migrations should create:
-
-| Bucket | Visibility | Use |
-|---|---|---|
-| foundation-media | Public | Approved public website images |
-| beneficiary-private | Private | Restricted child case documents |
-
-Never upload medical records, identity documents, guardian contact details or private case files to the public bucket.
+The two storage buckets are created by the migrations:
+- `foundation-media`: public approved media.
+- `beneficiary-private`: private case documents.
 
 ## 5. Configure Supabase authentication
 
