@@ -14,7 +14,7 @@ The frontend and API use the Supabase client. The backend additionally uses the 
 
 ## 2. Automatic Supabase setup
 
-You do not need to paste SQL into the Supabase SQL Editor. The backend runs the versioned migrations in `supabase/migrations/` during startup and records each successful migration in `public.foundation_schema_migrations`. Later redeployments apply only new migration files and preserve existing data. The latest migration, `007_directed_programme_donations.sql`, adds programme-directed donations and keeps general foundation support, campaign gifts and programme gifts separate.
+You do not need to paste SQL into the Supabase SQL Editor. The backend runs the versioned migrations in `supabase/migrations/` during startup and records each successful migration in `public.foundation_schema_migrations`. Later redeployments apply only new migration files and preserve existing data. Migrations `007_directed_programme_donations.sql` and `008_burn_prevention_programmes.sql` add programme-directed donations, recalculate programme totals from verified payments, and seed the two published burn-prevention programmes: **Fire Safety in the Home** and **Children and Fire Management at Home**.
 
 Copy the **Session pooler** URI from Supabase **Connect → Session pooler** and add it to Render as `SUPABASE_DB_URL`. Replace the password placeholder in the URI with the project's database password. Keep this secret in Render only.
 
@@ -126,7 +126,7 @@ PAYSTACK_CALLBACK_URL=https://ugoekloh-foundation.vercel.app/donation/return
 VITE_API_URL=https://ugoekloh-foundation-api.onrender.com
 ```
 
-## 6. Paystack (optional until online payments are enabled)
+## 6. Paystack online donations
 
 1. Complete Paystack merchant onboarding.
 2. Start with a Paystack test secret key.
@@ -138,7 +138,7 @@ VITE_API_URL=https://ugoekloh-foundation-api.onrender.com
 5. Test a payment end-to-end. Confirm the backend verifies the transaction and expected GHS amount before it is marked paid.
 6. Do not switch to live credentials until test transactions succeed and Paystack has approved the merchant account.
 
-If Paystack is not configured, the site can record a donation pledge as **pending**. A pending pledge is not a completed payment. Foundation staff must verify receipt before marking it paid. Do not publish unverified bank or mobile-money instructions.
+The public donation flow accepts online Paystack payments only. If Paystack is not configured, online checkout is temporarily unavailable; the website must not accept manual pledges or display offline bank/mobile-money instructions.
 
 ## 7. First deployment checklist
 
@@ -152,7 +152,7 @@ If Paystack is not configured, the site can record a donation pledge as **pendin
 - [ ] No secret/service-role or Paystack key is exposed in Vercel or GitHub.
 - [ ] Initial super-admin was created from the private Render environment variables.
 - [ ] Contact, volunteer and partnership submissions reach the database.
-- [ ] Manual donation pledge remains pending until verified.\n- [ ] Test one general foundation donation, one campaign donation and one programme donation; confirm that only the selected destination receives the verified amount.\n- [ ] Confirm the admin content editor can upload an image from a phone/computer, preview it and save it without manually copying a storage path.
+- [ ] Test one general foundation donation and one programme donation; confirm that only the selected programme receives its verified amount.\n- [ ] Confirm the admin programme editor can upload a cover image from a phone/computer, preview it and save it without manually copying a storage path.
 - [ ] Paystack test transaction is verified before enabling live payments.
 - [ ] Private beneficiary documents cannot be accessed by the public.
 - [ ] Test on desktop and mobile.
