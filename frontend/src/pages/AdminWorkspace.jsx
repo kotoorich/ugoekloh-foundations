@@ -8,7 +8,7 @@ const MODULES = [
 ];
 const ROLE_MODULES = {
   super_admin: MODULES.map(x=>x[0]),
-  admin: ['overview','programmes','projects','news','events','partners','beneficiaries','volunteer_applications','contact_messages','audit_logs','foundation_settings','faqs','gallery_items','impact_reports','site_pages','newsletter_subscribers','partnership_applications'],
+  admin: MODULES.map(x=>x[0]),
   editor: ['overview','programmes','projects','news','events','partners','faqs','gallery_items','impact_reports','site_pages','partnership_applications'],
   finance: ['overview','donations'],
   case_worker: ['overview','beneficiaries'],
