@@ -469,3 +469,259 @@ Complete the end-to-end tests and have the foundation's responsible people revie
 | API URL | — | Assigned by Render | VITE_API_URL |
 
 **Remember:** Supabase stores the data, Render runs the private Python API, and Vercel serves the public React website. The URLs and keys must match across all three services.
+
+---
+
+# PART H — COMPLETE ADMINISTRATOR & STAFF USER MANUAL
+
+This section is the everyday operating guide for the foundation team. The website is a tool for the work; it does not replace safeguarding judgement, clinical decisions, financial controls or the foundation's legal obligations.
+
+## 20. Sign in and navigate
+
+1. Open the deployed website and add `/admin` to its address.
+2. Sign in with the individual account created by the super administrator.
+3. The workspace navigation is based on your staff role. On a phone, select **Open menu**.
+4. Open the relevant section, complete the work and check the confirmation message.
+5. Select **Sign out** when finished, particularly on a shared computer.
+
+There is no public staff registration. Do not share accounts. Individual accounts are necessary for access control and accountability.
+
+### Staff roles
+
+| Role | Main responsibilities and access |
+|---|---|
+| Super administrator | Full workspace access, staff account creation and platform oversight |
+| Administrator | Public content, foundation settings, enquiries, partnerships and child-case oversight |
+| Editor | Programmes, projects, news, events, partners, FAQs, gallery, impact reports and policy pages |
+| Finance | Donation ledger, payment verification, receipts and authorised exports |
+| Case worker | Child cases assigned to that worker only |
+| Staff | Volunteer applications and contact messages |
+
+Use the least-privilege role that lets a person perform their work. A case worker does not need administrator access to manage assigned cases.
+
+## 21. Overview
+
+The Overview is a navigation starting point. It intentionally does not display an overall amount-raised statistic. Financial records belong in **Donations**; an optional fundraising target and verified progress belong on the individual public programme.
+
+Use the shortcuts to open Child case management, Programmes, Staff and access (if authorised), or Messages and enquiries.
+
+## 22. Programmes and optional fundraising goals
+
+Programmes describe the foundation's continuing work. Use the term **programmes**, not campaigns, for these public sections.
+
+### Create or edit a programme
+
+1. Open **Programmes** and select **Add new**, or choose **Edit** beside an existing programme.
+2. Enter the title, category, short description and full content.
+3. Upload an approved cover image using **Choose image**. Preview, replace or remove it here; do not paste an image URL.
+4. Choose a publishing status: **Draft** (not public), **Published** (eligible for public display) or **Archived** (retained but not active publicly).
+5. Select **Save changes** and review the public Programmes page.
+
+### Optional fundraising goal
+
+The **Fundraising goal (GHS)** field may be left blank.
+
+- Blank means no public target and no progress bar.
+- A positive approved goal makes the public programme card show the target and progress bar.
+- The amount raised is maintained by the database from donations directed to that programme with status **paid**.
+- Pending, failed and refunded donations do not count.
+- General foundation donations and donations directed to another programme are kept separate.
+- Never type a raised amount manually. The amount is calculated from verified donation records.
+
+Only publish a target that the foundation has approved and can explain to donors.
+
+## 23. Child cases — registration, assignment and follow-up
+
+Child cases contain confidential guardian and child information. They are for authorised case staff, not a public directory.
+
+### A. Before registration
+
+Confirm that the foundation is authorised to collect the information. Explain the purpose and handling of the data to the guardian. Record consent to collect information separately from consent to publish a story or photograph. Use a non-identifying case reference and collect only information needed to assess and coordinate support.
+
+### B. Register a case (administrator)
+
+1. Open **Child cases**.
+2. Enter the case reference, guardian name and contact, child display name, support category and support summary.
+3. Confirm **Guardian consent to collect case information**. Registration is blocked unless this is checked.
+4. Leave separate public-story consent unchecked unless informed permission has been documented and approved.
+5. Select an active Case worker if one is ready. Otherwise leave the case unassigned.
+6. Select **Register child case** and confirm the new case appears.
+
+Use the case reference in routine internal discussions wherever possible. Do not expose child names or details in screenshots, emails or public reports.
+
+### C. Assign or reassign a case
+
+1. Find the case card.
+2. Under **Responsible case worker**, choose an active staff account with the Case worker role.
+3. The assignment is saved against that person's authenticated user ID.
+4. To transfer responsibility, select another active worker. To remove assignment, choose **Not assigned**.
+5. Confirm the save message and refresh the case list if needed.
+6. Tell the receiving worker using the foundation's approved internal channel.
+
+The current release does not send automatic email, SMS or push notifications for assignment changes. An administrator or super administrator can oversee the case register. A worker should see only cases assigned to their own account.
+
+### D. Case worker daily workflow
+
+1. Sign in using your own account and open **Child cases**.
+2. Review your assigned cases, support summary and current status.
+3. Record an assessment, appointment, home visit, medical coordination, support provided, follow-up or case note.
+4. Write factual, respectful notes: what happened, what action was taken, who is responsible for the next step and the relevant date.
+5. Add a next follow-up date and time when needed.
+6. Upload relevant private documents using **Upload document**. Accepted formats are PDF, JPG and PNG under 10 MB.
+7. Add a new activity after each meaningful development.
+
+The history is a dated record and is append-only through the current user interface. Do not put passwords, payment-card details or unrelated personal information in case notes.
+
+### E. Case statuses
+
+Use these exact values in the status control:
+
+- `under_review` — awaiting assessment or decision.
+- `active` — support coordination is in progress.
+- `on_hold` — work is temporarily paused; record why in a case activity.
+- `completed` — planned support activity has been completed, subject to review.
+- `closed` — an authorised supervisor has reviewed the record and approved closure.
+
+Before closure, review the history, outstanding follow-ups, documents and support commitments. Keep a case active or on hold if further work remains. The current application provides status updates and supervisor visibility, but not a formal multi-step closure approval workflow.
+
+### F. Private documents and safeguarding
+
+- Store case files only in the private `beneficiary-private` bucket.
+- Never upload case files to public `foundation-media`.
+- Never create public links to private case documents.
+- Case workers may access files only for cases assigned to them; administrators retain oversight.
+- Deactivate staff accounts promptly when access is no longer needed.
+- If consent is withdrawn, follow the foundation's approved safeguarding and retention procedure. The database has a withdrawal timestamp field, but a complete withdrawal workflow and legal retention process are not yet provided by the application.
+
+The platform does not replace clinical judgement, statutory safeguarding duties, emergency response, guardian communication or a formal case-supervision policy.
+
+## 24. Staff accounts and access
+
+Only a super administrator can create accounts from **Staff**.
+
+1. Enter the staff member's full name and unique email.
+2. Set a temporary password of at least 12 characters.
+3. Choose the correct role and select **Create account**.
+4. Share the temporary credentials privately.
+5. Ask the staff member to use the account's available password-management process to change the temporary password.
+6. Use **Deactivate** immediately when a staff member leaves or no longer needs access. Reactivate only after approval.
+
+The current release does not enforce a first-login password-change screen. Treat temporary credentials as sensitive and plan a dedicated password lifecycle improvement.
+
+## 25. Donations and finance
+
+Open **Donations** only if your role permits it. The ledger shows donor and transaction details, reference, destination and status.
+
+- **Verify online payment** asks the backend to verify the transaction with Paystack.
+- Treat a donation as received only when the backend confirms status **paid**.
+- Record a refund only after the refund has actually been processed and authorised.
+- **Download receipt** is available for paid donations.
+- **Export CSV** is for authorised reconciliation and reporting only.
+- Keep donor details and exports confidential.
+
+A donor chooses general foundation support or one published programme. Programme donations remain associated with that programme; general donations do not count toward any programme goal. Never mark a payment as paid just because a donor sends a screenshot. The application does not replace accounting records, bank reconciliation or independent refund approval.
+
+## 26. Enquiries, volunteers, partnerships and newsletter
+
+Depending on your role, the workspace may include:
+- **Messages** — questions submitted through the public contact form.
+- **Volunteers** — volunteer applications.
+- **Partnerships** — organisation partnership enquiries.
+- **Newsletter** — subscribers and unsubscribe requests.
+
+Read submissions before acting. Update statuses to reflect the actual review state. Do not promise acceptance, funding, employment, medical assistance or partnership approval before the authorised foundation representative has decided.
+
+## 27. Public content
+
+Editors and administrators maintain:
+- **Projects** — specific pieces of work.
+- **News** — approved updates and stories.
+- **Events** — descriptions, venue and dates.
+- **Partners** — approved names, descriptions, websites and logos.
+- **FAQs** — answers to common questions.
+- **Gallery** — approved images, accessibility descriptions and consent references.
+- **Impact reports** — approved reporting-period summaries and report files.
+- **Policy pages** — privacy, safeguarding and terms content.
+
+Check spelling, dates, links, image quality, permissions and factual accuracy before publishing. Use drafts for unfinished work. Never invent impact figures, testimonials, partner endorsements, registrations, medical outcomes or financial totals.
+
+## 28. Foundation settings
+
+Authorised administrators can update the foundation name, public contact email, telephone number and address in **Settings**. Enter only verified details and check the public footer after saving.
+
+## 29. Audit trail
+
+The **Audit trail** is available to authorised administrators and records selected sensitive changes, including donation, child-case and document changes. Use it for oversight and investigation. It is not a replacement for a complete case file, finance ledger, incident register or formal approval workflow.
+
+## 30. Troubleshooting
+
+| Problem | What to check |
+|---|---|
+| Cannot sign in | Check email, password, connection and account active status. Contact the super administrator. |
+| Access unavailable | The account may be inactive or have no valid role. |
+| A menu item is missing | Your role may not include that module. Never use another person's login. |
+| Worker cannot see a case | Check assignment to the exact user account currently signed in. |
+| No workers appear in assignment list | Confirm active staff accounts exist with the Case worker role. |
+| Case update does not save | Check the summary, internet connection and current case assignment. |
+| Private upload fails | Use PDF, JPG or PNG under 10 MB and confirm case access. |
+| Programme is not public | Confirm Published status and successful deployment of the latest database migrations/API. |
+| Programme progress is hidden | A positive goal must be set. Only verified paid programme donations count. |
+| Donation remains pending | Use payment verification. Do not treat it as received until confirmed. |
+| Website content looks old | Refresh. If it persists, ask the technical administrator to check Vercel and the API health endpoint. |
+
+## 31. Routine administrator checklist
+
+**Each working day**
+- Review new messages, volunteer and partnership enquiries.
+- Check unassigned cases and allocate a responsible worker.
+- Review upcoming and overdue follow-ups.
+- Confirm case notes are factual and necessary.
+- Check pending donations and verify transactions through Paystack.
+
+**Each week**
+- Review active and on-hold cases with workers.
+- Confirm each active case has a clear next action.
+- Review staff access and deactivate accounts no longer needed.
+- Check public programme details and contact information.
+- Review the audit trail for unusual changes.
+
+**Each month**
+- Reconcile paid donations and refunds against Paystack and bank records.
+- Review programme goals and explain changes to donors.
+- Review case closures and outstanding commitments.
+- Check backups, permissions, privacy and safeguarding procedures.
+- Confirm impact claims are supported by evidence.
+
+## 32. Technical notes and deployment verification
+
+Migration `010_case_management_and_programme_goals.sql` adds nullable programme goals, case activity history, assigned-worker row-level security, activity permissions, administrator access to the active case-worker directory and restricted case-document metadata access.
+
+The backend migration runner applies the migration on startup when `SUPABASE_DB_URL` is configured. After deploying, verify the following:
+
+1. Confirm GitHub main contains migration 010 and the latest frontend/backend commits.
+2. Deploy the latest commit to Render.
+3. Confirm Render startup logs show migration 010 completed successfully.
+4. Deploy the latest frontend build to Vercel.
+5. Test with separate super administrator, administrator, case worker, editor and finance accounts.
+6. Create a synthetic test case and assign it to a test worker.
+7. Confirm the worker can see that case but cannot see another worker's case.
+8. Add a test activity and follow-up date; confirm it appears in the history.
+9. Upload a test private document and verify an unrelated account cannot access it.
+10. Set a programme goal and confirm the public progress bar appears. Clear the goal and confirm the bar disappears.
+11. Use Paystack test mode to confirm only paid programme-directed donations affect the programme total.
+
+Never use real children's personal information or live payment details for testing.
+
+### Not included in this release
+
+The current application provides case assignment/reassignment, assigned-case access, activity logging, follow-up dates, private document upload, status updates and administrator oversight. These additional capabilities require separate implementation and testing:
+- Automatic email, SMS or push notifications on assignment or upcoming/overdue follow-up.
+- A background overdue-follow-up alert service.
+- Formal multi-step supervisor approval for case closure.
+- A complete consent-withdrawal and records-retention workflow.
+- A forced first-login password-change screen.
+- Automated scheduled backups and disaster-recovery testing.
+
+Plan and test these before relying on them operationally.
+
+---
