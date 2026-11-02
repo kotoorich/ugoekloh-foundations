@@ -96,17 +96,29 @@ do $$ declare t text; begin
   execute format('create policy "Staff manage %1$s" on public.%1$I for all to authenticated using (public.is_staff()) with check (public.is_staff())',t);
  end loop;
 end $$;
+drop policy if exists "Finance and admins read donations" on public.donations;
 create policy "Finance and admins read donations" on public.donations for select to authenticated using(public.has_role(array['super_admin','admin','finance']));
+drop policy if exists "Staff manage donations" on public.donations;
 create policy "Staff manage donations" on public.donations for update to authenticated using(public.has_role(array['super_admin','admin','finance'])) with check(public.has_role(array['super_admin','admin','finance']));
+drop policy if exists "Staff read volunteer applications" on public.volunteer_applications;
 create policy "Staff read volunteer applications" on public.volunteer_applications for select to authenticated using(public.is_staff());
+drop policy if exists "Staff update volunteer applications" on public.volunteer_applications;
 create policy "Staff update volunteer applications" on public.volunteer_applications for update to authenticated using(public.is_staff()) with check(public.is_staff());
+drop policy if exists "Staff read contact messages" on public.contact_messages;
 create policy "Staff read contact messages" on public.contact_messages for select to authenticated using(public.is_staff());
+drop policy if exists "Staff update contact messages" on public.contact_messages;
 create policy "Staff update contact messages" on public.contact_messages for update to authenticated using(public.is_staff()) with check(public.is_staff());
+drop policy if exists "Case workers read beneficiaries" on public.beneficiaries;
 create policy "Case workers read beneficiaries" on public.beneficiaries for select to authenticated using(public.has_role(array['super_admin','admin','case_worker']));
+drop policy if exists "Case workers manage beneficiaries" on public.beneficiaries;
 create policy "Case workers manage beneficiaries" on public.beneficiaries for all to authenticated using(public.has_role(array['super_admin','admin','case_worker'])) with check(public.has_role(array['super_admin','admin','case_worker']));
+drop policy if exists "Users read own staff profile" on public.staff_profiles;
 create policy "Users read own staff profile" on public.staff_profiles for select to authenticated using(user_id=auth.uid() or public.has_role(array['super_admin','admin']));
+drop policy if exists "Admins manage staff profiles" on public.staff_profiles;
 create policy "Admins manage staff profiles" on public.staff_profiles for all to authenticated using(public.has_role(array['super_admin'])) with check(public.has_role(array['super_admin']));
+drop policy if exists "Admins read audit logs" on public.audit_logs;
 create policy "Admins read audit logs" on public.audit_logs for select to authenticated using(public.has_role(array['super_admin','admin']));
+drop policy if exists "Staff create audit logs" on public.audit_logs;
 create policy "Staff create audit logs" on public.audit_logs for insert to authenticated with check(actor=auth.uid() and public.is_staff());
 
 -- Secure storage: public-approved images only. Never upload private case files here.
@@ -114,11 +126,15 @@ insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('foundation-media','foundation-media',true,5242880,array['image/jpeg','image/png','image/webp','image/avif'])
 on conflict(id) do update set public=true,file_size_limit=5242880,allowed_mime_types=array['image/jpeg','image/png','image/webp','image/avif'];
 drop policy if exists "Public read foundation media" on storage.objects;
+drop policy if exists "Public read foundation media" on storage.objects;
 create policy "Public read foundation media" on storage.objects for select using(bucket_id='foundation-media');
+drop policy if exists "Staff upload foundation media" on storage.objects;
 drop policy if exists "Staff upload foundation media" on storage.objects;
 create policy "Staff upload foundation media" on storage.objects for insert to authenticated with check(bucket_id='foundation-media' and public.is_staff());
 drop policy if exists "Staff update foundation media" on storage.objects;
+drop policy if exists "Staff update foundation media" on storage.objects;
 create policy "Staff update foundation media" on storage.objects for update to authenticated using(bucket_id='foundation-media' and public.is_staff()) with check(bucket_id='foundation-media' and public.is_staff());
+drop policy if exists "Staff delete foundation media" on storage.objects;
 drop policy if exists "Staff delete foundation media" on storage.objects;
 create policy "Staff delete foundation media" on storage.objects for delete to authenticated using(bucket_id='foundation-media' and public.is_staff());
 
@@ -127,6 +143,8 @@ insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('beneficiary-private','beneficiary-private',false,10485760,array['application/pdf','image/jpeg','image/png'])
 on conflict(id) do update set public=false,file_size_limit=10485760;
 drop policy if exists "Authorized case staff read private files" on storage.objects;
+drop policy if exists "Authorized case staff read private files" on storage.objects;
 create policy "Authorized case staff read private files" on storage.objects for select to authenticated using(bucket_id='beneficiary-private' and public.has_role(array['super_admin','admin','case_worker']));
+drop policy if exists "Authorized case staff upload private files" on storage.objects;
 drop policy if exists "Authorized case staff upload private files" on storage.objects;
 create policy "Authorized case staff upload private files" on storage.objects for insert to authenticated with check(bucket_id='beneficiary-private' and public.has_role(array['super_admin','admin','case_worker']));
