@@ -34,28 +34,38 @@ alter table public.beneficiary_documents enable row level security;
 alter table public.donation_receipts enable row level security;
 
 drop policy if exists "Public read foundation settings" on public.foundation_settings;
+drop policy if exists "Public read foundation settings" on public.foundation_settings;
 create policy "Public read foundation settings" on public.foundation_settings for select using(true);
+drop policy if exists "Admins manage foundation settings" on public.foundation_settings;
 drop policy if exists "Admins manage foundation settings" on public.foundation_settings;
 create policy "Admins manage foundation settings" on public.foundation_settings for all to authenticated using(public.has_role(array['super_admin','admin'])) with check(public.has_role(array['super_admin','admin']));
 drop policy if exists "Public subscribe newsletter" on public.newsletter_subscribers;
+drop policy if exists "Public subscribe newsletter" on public.newsletter_subscribers;
 create policy "Public subscribe newsletter" on public.newsletter_subscribers for insert to anon,authenticated with check(status='subscribed');
+drop policy if exists "Staff manage newsletter" on public.newsletter_subscribers;
 drop policy if exists "Staff manage newsletter" on public.newsletter_subscribers;
 create policy "Staff manage newsletter" on public.newsletter_subscribers for all to authenticated using(public.has_role(array['super_admin','admin','editor'])) with check(public.has_role(array['super_admin','admin','editor']));
 drop policy if exists "Case staff manage beneficiary documents" on public.beneficiary_documents;
+drop policy if exists "Case staff manage beneficiary documents" on public.beneficiary_documents;
 create policy "Case staff manage beneficiary documents" on public.beneficiary_documents for all to authenticated using(public.has_role(array['super_admin','admin','case_worker'])) with check(public.has_role(array['super_admin','admin','case_worker']));
 drop policy if exists "Finance read donation receipts" on public.donation_receipts;
+drop policy if exists "Finance read donation receipts" on public.donation_receipts;
 create policy "Finance read donation receipts" on public.donation_receipts for select to authenticated using(public.has_role(array['super_admin','admin','finance']));
+drop policy if exists "Finance create donation receipts" on public.donation_receipts;
 drop policy if exists "Finance create donation receipts" on public.donation_receipts;
 create policy "Finance create donation receipts" on public.donation_receipts for insert to authenticated with check(public.has_role(array['super_admin','admin','finance']));
 
 -- Restrict sensitive case information to designated case staff only.
 drop policy if exists "Case workers read beneficiaries" on public.beneficiaries;
+drop policy if exists "Case workers read beneficiaries" on public.beneficiaries;
 create policy "Case workers read beneficiaries" on public.beneficiaries for select to authenticated using(public.has_role(array['super_admin','admin','case_worker']));
+drop policy if exists "Case workers manage beneficiaries" on public.beneficiaries;
 drop policy if exists "Case workers manage beneficiaries" on public.beneficiaries;
 create policy "Case workers manage beneficiaries" on public.beneficiaries for all to authenticated using(public.has_role(array['super_admin','admin','case_worker'])) with check(public.has_role(array['super_admin','admin','case_worker']));
 
 -- Storage objects are private and keyed by a case UUID folder. A case worker can only
 -- access the folder for a case assigned to them; administrators retain oversight.
+drop policy if exists "Authorized case staff read private files" on storage.objects;
 drop policy if exists "Authorized case staff read private files" on storage.objects;
 create policy "Authorized case staff read private files" on storage.objects for select to authenticated
 using(bucket_id='beneficiary-private' and (
@@ -66,6 +76,7 @@ using(bucket_id='beneficiary-private' and (
  ))
 ));
 drop policy if exists "Authorized case staff upload private files" on storage.objects;
+drop policy if exists "Authorized case staff upload private files" on storage.objects;
 create policy "Authorized case staff upload private files" on storage.objects for insert to authenticated
 with check(bucket_id='beneficiary-private' and (
  public.has_role(array['super_admin','admin']) or
@@ -75,9 +86,11 @@ with check(bucket_id='beneficiary-private' and (
  ))
 ));
 drop policy if exists "Authorized case staff update private files" on storage.objects;
+drop policy if exists "Authorized case staff update private files" on storage.objects;
 create policy "Authorized case staff update private files" on storage.objects for update to authenticated
 using(bucket_id='beneficiary-private' and (public.has_role(array['super_admin','admin']) or public.has_role(array['case_worker'])))
 with check(bucket_id='beneficiary-private' and (public.has_role(array['super_admin','admin']) or public.has_role(array['case_worker'])));
+drop policy if exists "Authorized case staff delete private files" on storage.objects;
 drop policy if exists "Authorized case staff delete private files" on storage.objects;
 create policy "Authorized case staff delete private files" on storage.objects for delete to authenticated
 using(bucket_id='beneficiary-private' and public.has_role(array['super_admin','admin']));
