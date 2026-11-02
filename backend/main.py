@@ -162,15 +162,23 @@ async def refund_donation(reference: str, request: Request):
         return {"ok":True,"status":"refunded","already_refunded":True}
     if donation.get("status")!="paid":
         raise HTTPException(409,"Only verified paid donations can be refunded.")
+    if donation.get("refund_status") in ("pending","processing","needs-attention"):
+        raise HTTPException(409,"A Paystack refund is already being processed for this donation.")
+    actor=require_super_admin(request)
     payload={"transaction":donation.get("provider_transaction_id") or reference}
     async with httpx.AsyncClient(timeout=30) as http:
         response=await http.post("https://api.paystack.co/refund",headers={"Authorization":f"Bearer {PAYSTACK_SECRET_KEY}","Content-Type":"application/json"},json=payload)
     data=response.json()
     if response.status_code>=400 or not data.get("status"):
         raise HTTPException(502,"Paystack did not accept the refund request. The donation remains recorded as paid.")
-    client.table("donations").update({"status":"refunded","refunded_at":datetime.now(timezone.utc).isoformat()}).eq("reference",reference).execute()
-    client.table("audit_logs").insert({"actor":require_super_admin(request).id,"action":"donation_refund_requested","entity":"donations","entity_id":donation["id"],"details":{"reference":reference,"provider":"paystack"}}).execute()
-    return {"ok":True,"status":"refunded"}
+    refund=data.get("data") or {}
+    refund_status=refund.get("status") or "pending"
+    updates={"refund_status":refund_status,"provider_refund_id":str(refund.get("id") or "") or None}
+    if refund_status=="processed":
+        updates.update({"status":"refunded","refunded_at":datetime.now(timezone.utc).isoformat()})
+    client.table("donations").update(updates).eq("reference",reference).execute()
+    client.table("audit_logs").insert({"actor":actor.id,"action":"donation_refund_requested","entity":"donations","entity_id":donation["id"],"details":{"reference":reference,"provider":"paystack","refund_status":refund_status}}).execute()
+    return {"ok":True,"status":refund_status,"message":data.get("message") or "Refund request submitted to Paystack."}
 
 @app.post("/api/payments/paystack/webhook")
 async def paystack_webhook(request: Request):
@@ -181,7 +189,21 @@ async def paystack_webhook(request: Request):
     expected=hmac.new(PAYSTACK_SECRET_KEY.encode(),body,hashlib.sha512).hexdigest() if PAYSTACK_SECRET_KEY else ""
     if not signature or not hmac.compare_digest(signature,expected): raise HTTPException(401,"Invalid webhook signature.")
     event=await request.json()
-    if event.get("event")=="charge.success":
+    if event.get("event") in ("refund.pending","refund.processing","refund.needs-attention","refund.failed","refund.processed"):
+        refund_data=event.get("data",{})
+        ref=refund_data.get("transaction_reference")
+        if ref and db:
+            current=db.table("donations").select("id,status").eq("reference",ref).maybe_single().execute().data
+            if current:
+                refund_status=event["event"].split(".",1)[1]
+                updates={"refund_status":refund_status}
+                if refund_status=="processed":
+                    updates.update({"status":"refunded","refunded_at":datetime.now(timezone.utc).isoformat()})
+                elif refund_status=="failed":
+                    updates.update({"status":"paid","refunded_at":None})
+                db.table("donations").update(updates).eq("reference",ref).execute()
+                db.table("audit_logs").insert({"action":"paystack_refund_status_updated","entity":"donations","entity_id":current["id"],"details":{"reference":ref,"refund_status":refund_status}}).execute()
+    elif event.get("event")=="charge.success":
         tx=event.get("data",{}); ref=tx.get("reference")
         if ref and db:
             donation=db.table("donations").select("id,amount,currency,status,donor_email,donor_name").eq("reference",ref).maybe_single().execute().data
