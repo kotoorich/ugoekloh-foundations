@@ -9,7 +9,8 @@ A full-stack foundation website for publishing approved updates, receiving donat
 - Public website: Home, About, Programmes, Stories, News, Events, Gallery, Impact Reports, FAQs, Policies and Contact.
 - Get involved: Volunteer applications, partnership enquiries and newsletter subscriptions.
 - Donations: Paystack checkout, server-side verification, one destination per gift (general foundation support or one programme), Paystack online checkout, verified payment tracking and downloadable receipts.
-- Admin workspace: Guided content editing, direct image uploads with previews, donation ledger with destination labels, enquiries, staff accounts and foundation settings.
+- Admin workspace: Guided content editing, direct image uploads with previews, donation ledger with destination labels, Paystack refund tracking, enquiries, staff accounts, foundation settings and operational overview counts.
+- Email delivery: Admin-controlled ON/OFF mode, manual Gmail API primary / SendPulse alternative selection, test email, branded templates and delivery activity logs.
 - Child case management: Guardian consent records, case-worker assignment and private case-document uploads.
 - Supabase database, authentication, row-level security and separate public/private storage buckets.
 
