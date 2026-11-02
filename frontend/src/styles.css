@@ -188,3 +188,9 @@
 .manual-payment-instructions p{font-size:12px;line-height:1.65;color:#58665d;white-space:pre-wrap;margin:7px 0 0}
 .footer a[href^="mailto:"],.footer a[href^="tel:"]{color:#d7e3da;text-decoration:underline;text-underline-offset:3px}
 .footer a[href^="mailto:"]:hover,.footer a[href^="tel:"]:hover{color:#e7c77f}
+
+
+.workspace-record{display:flex;align-items:center;gap:14px;min-width:0;flex:1}
+.workspace-record>div{min-width:0}
+.workspace-record-thumb{width:76px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:#edf2ec}
+@media(max-width:600px){.workspace-record{width:100%}.workspace-record-thumb{width:64px;height:58px}}
