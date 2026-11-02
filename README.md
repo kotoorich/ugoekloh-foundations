@@ -27,7 +27,65 @@ For local development, install Git, Node.js LTS and Python 3.11.
 
 Repository: https://github.com/kotoorich/ugoekloh-foundations
 
+## 3. Exact environment variables — use this as your checklist
+
+You do **not** need `DATABASE_URL`. This version connects to Supabase using its project URL and API keys.
+
+### Vercel — frontend (3 variables)
+
+Add these under **Vercel → Project → Settings → Environment Variables**:
+
+```env
+VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_OR_PUBLISHABLE_KEY
+VITE_API_URL=https://YOUR_RENDER_SERVICE.onrender.com
+```
+
+All three are required. Replace the example URLs and key with the values from your own Supabase and Render projects.
+
+### Render — backend (6 variable names)
+
+Add these under **Render → Your Web Service → Environment**:
+
+```env
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY
+FRONTEND_URL=https://YOUR_VERCEL_DOMAIN.vercel.app
+ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN.vercel.app
+PAYSTACK_SECRET_KEY=
+PAYSTACK_CALLBACK_URL=https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return
+```
+
+| Variable | Required? | Purpose |
+|---|---|---|
+| `SUPABASE_URL` | Yes | Connects the backend to your Supabase project |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Private backend access to Supabase |
+| `FRONTEND_URL` | Yes for production | Your deployed website address |
+| `ALLOWED_ORIGINS` | Yes for production | Allows your website to call the API |
+| `PAYSTACK_SECRET_KEY` | Only when enabling Paystack | Private Paystack test/live secret |
+| `PAYSTACK_CALLBACK_URL` | Only when enabling Paystack | Where donors return after checkout |
+
+You can leave the two Paystack values empty/not configured until online donations are ready. The application can record manual pledges as pending.
+
+### Where to get the values
+
+- `SUPABASE_URL`: Supabase Dashboard → Project Settings → API.
+- `VITE_SUPABASE_ANON_KEY`: Supabase Dashboard → Project Settings → API Keys. Use the publishable key, or the legacy anon key if that is what your project provides.
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase Dashboard → Project Settings → API Keys. Use the secret key, or the legacy service_role key if that is what your project provides.
+- `VITE_API_URL`: the Render service URL, without an extra path such as `/api`.
+- `FRONTEND_URL` and `ALLOWED_ORIGINS`: your Vercel website URL.
+- Paystack values: your Paystack dashboard.
+
+**Important security rules**
+- Put `VITE_SUPABASE_ANON_KEY` in Vercel only. It is the browser-safe publishable/anon key and must be protected by Supabase Row Level Security.
+- Put `SUPABASE_SERVICE_ROLE_KEY` and `PAYSTACK_SECRET_KEY` in Render only. Never put them in Vercel, frontend code, GitHub, or a public document.
+- Do not add `DATABASE_URL`; the current backend does not read it.
+- After changing environment variables on Vercel, redeploy the frontend. After changing them on Render, save and restart/redeploy the service if prompted.
+
+For local development, copy `frontend/.env.example` to `frontend/.env` and `backend/.env.example` to `backend/.env`. The exact local values and commands are in [Local Development](docs/LOCAL_DEVELOPMENT.md).
+
 ---
+
 
 # PART A — SUPABASE DATABASE
 
