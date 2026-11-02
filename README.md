@@ -725,3 +725,29 @@ The current application provides case assignment/reassignment, assigned-case acc
 Plan and test these before relying on them operationally.
 
 ---
+
+
+## 33. Updated administrator workspace and public contact details
+
+The administrator workspace uses a dedicated administration header and a horizontally scrollable tab bar. Administrators and super administrators can open every workspace module. On smaller screens, the tab bar scrolls horizontally so all modules remain reachable.
+
+The administrator can create staff accounts for the available operational roles, manage staff profiles, review donations and enquiries, edit public content, manage child-support cases, and update foundation settings. Only the super administrator role is reserved from ordinary staff-account creation.
+
+### Assigning a person to a child-support case
+
+The assignment dropdown includes every **active staff account**, not only case workers. This means an administrator, super administrator, finance officer, editor, case worker or other active staff member can be selected as the person responsible. The selected person's role is shown beside their name. Case workers continue to see only cases assigned to their own account; administrators retain oversight of all cases.
+
+### Footer contact details
+
+Open **Settings → Foundation profile and contact details** and maintain these fields separately:
+
+- **Public contact email:** the email address shown in the website footer.
+- **General contact number:** the foundation's main contact number.
+- **Dedicated call line number:** the phone number visitors should use as the call line. It appears separately in the footer and is clickable on mobile.
+- **Foundation address:** the public address shown in the footer.
+
+The call-line field is added by migration `013_public_contact_and_content_images.sql`. The backend public-settings endpoint must be redeployed with the migration before the new field appears on the live site.
+
+### Images on public pages
+
+Administrators can attach images to programmes, projects, news, events, partner profiles, gallery entries and impact reports. Use the image preview in the editor to confirm the correct image before saving. Gallery images remain hidden from the public until they are published and guardian consent is verified. Never upload or publish identifiable child photographs without appropriate guardian consent and safeguarding approval.
