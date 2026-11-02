@@ -43,6 +43,13 @@ def database():
     if not db: raise HTTPException(503,"Database service is not configured.")
     return db
 
+
+@app.on_event("startup")
+def initialize_database_and_admin():
+    # Render redeploys safely apply only migration files not yet recorded.
+    from migration_runner import setup_database
+    setup_database()
+
 @app.get("/api/health")
 def health(): return {"status":"ok","service":"ugo-ekloh-foundation-api"}
 
