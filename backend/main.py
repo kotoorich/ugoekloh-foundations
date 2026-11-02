@@ -217,6 +217,9 @@ async def paystack_webhook(request: Request):
     return {"received":True}
 
 
+class PasswordChangeRequest(BaseModel):
+    new_password: str = Field(min_length=12,max_length=128)
+
 class StaffCreateRequest(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=2,max_length=120)
@@ -317,6 +320,31 @@ async def newsletter(payload: NewsletterRequest):
     mail_result=await send_email(client,to=str(payload.email),subject="You are subscribed to foundation updates",heading="Thank you for subscribing",message="You have been added to the foundation updates list. We will share news and information about the foundation.",category="newsletter_welcome")
     return {"ok":True,"message":"You are subscribed to foundation updates.","email_sent":bool(mail_result.get("sent"))}
 
+@app.post("/api/account/change-password")
+def change_own_password(payload: PasswordChangeRequest, request: Request):
+    client=database()
+    header=request.headers.get("authorization","")
+    if not header.lower().startswith("bearer "):
+        raise HTTPException(401,"Sign in is required.")
+    try:
+        user=client.auth.get_user(header.split(" ",1)[1]).user
+    except Exception:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    if not user:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    profile=client.table("staff_profiles").select("is_active,must_change_password").eq("user_id",user.id).maybe_single().execute().data
+    if not profile or not profile.get("is_active"):
+        raise HTTPException(403,"An active staff account is required.")
+    if not profile.get("must_change_password"):
+        raise HTTPException(409,"A password change is not currently required.")
+    try:
+        client.auth.admin.update_user_by_id(user.id,{"password":payload.new_password})
+        client.table("staff_profiles").update({"must_change_password":False}).eq("user_id",user.id).execute()
+        client.table("audit_logs").insert({"actor":user.id,"action":"initial_password_changed","entity":"staff_profiles","entity_id":user.id,"details":{}}).execute()
+    except Exception as exc:
+        raise HTTPException(400,"The password could not be updated. Please try again.") from exc
+    return {"ok":True}
+
 @app.post("/api/admin/staff")
 async def create_staff(payload: StaffCreateRequest, request: Request):
     actor=require_super_admin(request)
@@ -325,7 +353,7 @@ async def create_staff(payload: StaffCreateRequest, request: Request):
         created=client.auth.admin.create_user({"email":payload.email,"password":payload.password,"email_confirm":True,"user_metadata":{"full_name":payload.full_name}})
         user=created.user
         if not user: raise HTTPException(502,"The identity provider did not return a new user.")
-        client.table("staff_profiles").insert({"user_id":user.id,"full_name":payload.full_name,"role":payload.role,"is_active":True}).execute()
+        client.table("staff_profiles").insert({"user_id":user.id,"full_name":payload.full_name,"role":payload.role,"is_active":True,"must_change_password":True}).execute()
         client.table("audit_logs").insert({"actor":actor.id,"action":"staff_created","entity":"staff_profiles","entity_id":user.id,"details":{"role":payload.role,"email":payload.email}}).execute()
         mail_result=await send_email(client,to=str(payload.email),subject="Your foundation staff account is ready",heading="Welcome to the foundation team",message=f"Your staff account has been created with the role {payload.role.replace('_',' ')}. Contact the administrator through the agreed secure channel for your temporary sign-in details. You will be asked to update your password when that control is enabled.",category="staff_invitation")
         return {"ok":True,"user_id":user.id,"email":payload.email,"role":payload.role,"email_sent":bool(mail_result.get("sent"))}
