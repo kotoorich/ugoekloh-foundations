@@ -47,3 +47,5 @@
 .public-card p{line-height:1.75;color:#59665d}
 .policy-content{max-width:760px;line-height:1.85;color:#48574d;white-space:normal}
 @media(max-width:680px){.public-collection{grid-template-columns:1fr}}
+
+.newsletter-form{margin:12px 0 18px;display:grid;gap:8px}.newsletter-form label{font-size:12px;color:inherit}.newsletter-form div{display:flex;gap:6px}.newsletter-form input{min-width:0;width:100%;padding:9px;border:1px solid #d5ddd4;border-radius:3px}.newsletter-form button{padding:8px 12px;white-space:nowrap}.newsletter-form small{font-size:10px;line-height:1.5;color:#738077}
