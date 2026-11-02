@@ -597,7 +597,7 @@ The platform does not replace clinical judgement, statutory safeguarding duties,
 
 ## 24. Staff accounts and access
 
-Only a super administrator can create accounts from **Staff**.
+An active **administrator or super administrator** can create, view, deactivate and reactivate staff accounts and can assign the available employee roles. The super administrator remains the highest-level account and is not assignable through the ordinary staff form.
 
 1. Enter the staff member's full name and unique email.
 2. Set a temporary password of at least 12 characters.
@@ -606,7 +606,7 @@ Only a super administrator can create accounts from **Staff**.
 5. Ask the staff member to use the account's available password-management process to change the temporary password.
 6. Use **Deactivate** immediately when a staff member leaves or no longer needs access. Reactivate only after approval.
 
-The current release does not enforce a first-login password-change screen. Treat temporary credentials as sensitive and plan a dedicated password lifecycle improvement.
+Administrators have the same workspace module access as super administrators for day-to-day foundation operations. Access to confidential child information and financial records remains protected by database policies, and administrator actions are recorded where audit triggers are configured. The current release does not enforce a first-login password-change screen. Treat temporary credentials as sensitive and plan a dedicated password lifecycle improvement.
 
 ## 25. Donations and finance
 
