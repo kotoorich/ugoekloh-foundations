@@ -25,3 +25,6 @@ on conflict (slug) do update set
   body=excluded.body,
   status='published',
   updated_at=now();
+
+-- Campaigns are retired from the product; preserve old rows for financial history but archive them.
+update public.campaigns set status='archived', updated_at=now() where status <> 'archived';
