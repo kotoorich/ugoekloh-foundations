@@ -323,9 +323,7 @@ Replace those example domains with the actual domains assigned to your accounts.
 
 ## 10. If Paystack is not ready
 
-The website supports a manual pledge fallback. A pledge is recorded as pending; it is not recorded as money received. The foundation team must contact the donor using verified payment instructions and reconcile the donation only after confirming receipt.
-
-Do not invent bank account numbers, mobile-money numbers or payment instructions.
+Online donations are Paystack-only. If the Paystack secret key is not configured, checkout is temporarily unavailable and the form will not accept offline pledges. Configure Paystack in Render before accepting donations.
 
 ---
 
