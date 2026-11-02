@@ -57,8 +57,8 @@ def health(): return {"status":"ok","service":"ugo-ekloh-foundation-api"}
 @app.get("/api/public/home")
 def home():
     if not db: return {"programmes":[],"campaigns":[],"impact":{}}
-    programs=db.table("programmes").select("id,title,category,description,image_path,amount_raised").eq("status","published").limit(3).execute().data
-    campaigns=db.table("campaigns").select("id,title,description,goal_amount,amount_raised,image_path").eq("status","published").limit(2).execute().data
+    programs=db.table("programmes").select("id,title,category,description,image_path,amount_raised").eq("status","published").order("created_at").limit(2).execute().data
+    campaigns=db.table("campaigns").select("id,title,description,goal_amount,amount_raised,image_path").eq("status","published").order("created_at").limit(1).execute().data
     return {"programmes":programs or [],"campaigns":campaigns or [],"impact":{}}
 
 @app.get("/api/public/campaigns")
@@ -88,29 +88,38 @@ def volunteer(payload: VolunteerRequest):
 @app.post("/api/donations/initialize")
 async def initialize_donation(payload: DonationRequest):
     client=database()
+    if payload.method != "paystack":
+        raise HTTPException(422,"Only secure online payment is accepted.")
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(503,"Secure online donations are temporarily unavailable. Please try again later.")
     if payload.campaign_id and payload.programme_id:
         raise HTTPException(422,"Choose one donation destination only.")
-    if payload.method not in {"paystack","manual"}:
-        raise HTTPException(422,"Choose a valid payment method.")
     if payload.campaign_id:
         selected=client.table("campaigns").select("id").eq("id",payload.campaign_id).eq("status","published").maybe_single().execute().data
         if not selected: raise HTTPException(404,"That campaign is no longer available. Please choose another destination.")
     if payload.programme_id:
         selected=client.table("programmes").select("id").eq("id",payload.programme_id).eq("status","published").maybe_single().execute().data
         if not selected: raise HTTPException(404,"That programme is no longer available. Please choose another destination.")
+
     amount_pesewas=int((payload.amount*100).quantize(Decimal("1")))
     ref="UEKF-"+uuid.uuid4().hex[:18].upper()
-    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":payload.email,"donor_phone":payload.phone,"status":"pending","campaign_id":payload.campaign_id,"programme_id":payload.programme_id,"payment_method":payload.method}
-    client.table("donations").insert(row).execute()
-    if payload.method=="paystack" and PAYSTACK_SECRET_KEY:
-        async with httpx.AsyncClient(timeout=25) as http:
-            response=await http.post("https://api.paystack.co/transaction/initialize",headers={"Authorization":f"Bearer {PAYSTACK_SECRET_KEY}","Content-Type":"application/json"},json={"email":payload.email,"amount":amount_pesewas,"currency":"GHS","reference":ref,"callback_url":PAYSTACK_CALLBACK_URL,"metadata":{"donor_name":payload.name,"donor_phone":payload.phone,"campaign_id":payload.campaign_id,"programme_id":payload.programme_id,"donation_destination":"campaign" if payload.campaign_id else "programme" if payload.programme_id else "foundation"}})
-        data=response.json()
-        if response.status_code>=400 or not data.get("status"):
-            raise HTTPException(502,"The online payment provider is temporarily unavailable. You can submit a manual donation pledge instead.")
-        return {"ok":True,"reference":ref,"authorization_url":data["data"]["authorization_url"]}
-    # Explicit fallback: pending pledge, never mark paid from the browser.
-    return {"ok":True,"reference":ref,"message":"Online card/mobile checkout is currently unavailable. Your pledge has been recorded as PENDING. The foundation team will contact you with verified bank or mobile-money instructions. No payment has been received yet."}
+    metadata={"donor_name":payload.name,"donor_phone":payload.phone,"campaign_id":payload.campaign_id,"programme_id":payload.programme_id,"donation_destination":"campaign" if payload.campaign_id else "programme" if payload.programme_id else "foundation"}
+    async with httpx.AsyncClient(timeout=25) as http:
+        response=await http.post(
+            "https://api.paystack.co/transaction/initialize",
+            headers={"Authorization":f"Bearer {PAYSTACK_SECRET_KEY}","Content-Type":"application/json"},
+            json={"email":payload.email,"amount":amount_pesewas,"currency":"GHS","reference":ref,"callback_url":PAYSTACK_CALLBACK_URL,"metadata":metadata},
+        )
+    data=response.json()
+    if response.status_code>=400 or not data.get("status"):
+        raise HTTPException(502,"We could not start your secure payment. No donation has been recorded as received. Please try again.")
+
+    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":payload.email,"donor_phone":payload.phone,"status":"pending","campaign_id":payload.campaign_id,"programme_id":payload.programme_id,"payment_method":"paystack"}
+    try:
+        client.table("donations").insert(row).execute()
+    except Exception as exc:
+        raise HTTPException(503,"Your payment session was created but could not be saved by the foundation. Please contact the foundation before attempting another payment.") from exc
+    return {"ok":True,"reference":ref,"authorization_url":data["data"]["authorization_url"]}
 
 @app.get("/api/donations/verify/{reference}")
 async def verify_donation(reference: str):
