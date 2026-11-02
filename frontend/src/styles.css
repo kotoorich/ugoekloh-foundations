@@ -194,3 +194,12 @@
 .workspace-record>div{min-width:0}
 .workspace-record-thumb{width:76px;height:64px;object-fit:cover;border-radius:8px;flex:none;background:#edf2ec}
 @media(max-width:600px){.workspace-record{width:100%}.workspace-record-thumb{width:64px;height:58px}}
+
+
+.workspace-quick-actions{margin-top:20px;padding:22px;border:1px solid #e6ece5;border-radius:12px;background:#fff}
+.workspace-quick-actions h3{font:500 22px 'Playfair Display',serif;color:#173d2b;margin:0 0 5px}
+.workspace-quick-actions p{font-size:12px;color:#758178;margin:0 0 15px}
+.workspace-quick-actions>div{display:flex;flex-wrap:wrap;gap:9px}
+.workspace-quick-actions button{border:1px solid #dce5dc;background:#f7faf6;color:#214b35;border-radius:8px;padding:11px 14px;font-size:12px;font-weight:700;cursor:pointer}
+.workspace-quick-actions button:hover{border-color:#176b45;background:#edf5ee}
+@media(max-width:600px){.workspace-quick-actions{padding:16px}.workspace-quick-actions>div{display:grid;grid-template-columns:1fr 1fr}.workspace-quick-actions button{min-height:44px;padding:10px}}
