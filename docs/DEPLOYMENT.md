@@ -14,7 +14,7 @@ The frontend and API use the Supabase client. The backend additionally uses the 
 
 ## 2. Automatic Supabase setup
 
-You do not need to paste SQL into the Supabase SQL Editor. The backend runs the versioned migrations in `supabase/migrations/` during startup and records each successful migration in `public.foundation_schema_migrations`. Later redeployments apply only new migration files and preserve existing data.
+You do not need to paste SQL into the Supabase SQL Editor. The backend runs the versioned migrations in `supabase/migrations/` during startup and records each successful migration in `public.foundation_schema_migrations`. Later redeployments apply only new migration files and preserve existing data. The latest migration, `007_directed_programme_donations.sql`, adds programme-directed donations and keeps general foundation support, campaign gifts and programme gifts separate.
 
 Copy the **Session pooler** URI from Supabase **Connect → Session pooler** and add it to Render as `SUPABASE_DB_URL`. Replace the password placeholder in the URI with the project's database password. Keep this secret in Render only.
 
@@ -152,7 +152,7 @@ If Paystack is not configured, the site can record a donation pledge as **pendin
 - [ ] No secret/service-role or Paystack key is exposed in Vercel or GitHub.
 - [ ] Initial super-admin was created from the private Render environment variables.
 - [ ] Contact, volunteer and partnership submissions reach the database.
-- [ ] Manual donation pledge remains pending until verified.
+- [ ] Manual donation pledge remains pending until verified.\n- [ ] Test one general foundation donation, one campaign donation and one programme donation; confirm that only the selected destination receives the verified amount.\n- [ ] Confirm the admin content editor can upload an image from a phone/computer, preview it and save it without manually copying a storage path.
 - [ ] Paystack test transaction is verified before enabling live payments.
 - [ ] Private beneficiary documents cannot be accessed by the public.
 - [ ] Test on desktop and mobile.
