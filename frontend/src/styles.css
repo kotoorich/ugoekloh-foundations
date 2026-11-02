@@ -203,3 +203,9 @@
 .workspace-quick-actions button{border:1px solid #dce5dc;background:#f7faf6;color:#214b35;border-radius:8px;padding:11px 14px;font-size:12px;font-weight:700;cursor:pointer}
 .workspace-quick-actions button:hover{border-color:#176b45;background:#edf5ee}
 @media(max-width:600px){.workspace-quick-actions{padding:16px}.workspace-quick-actions>div{display:grid;grid-template-columns:1fr 1fr}.workspace-quick-actions button{min-height:44px;padding:10px}}
+
+
+.workspace-setting-note{grid-column:1/-1;display:flex;justify-content:space-between;gap:15px;align-items:center;padding:13px 15px;border-radius:8px;background:#f0f4ef;color:#173d2b}
+.workspace-setting-note strong{font-size:12px}
+.workspace-setting-note span{font-size:11px;color:#68766f}
+@media(max-width:600px){.workspace-setting-note{align-items:flex-start;flex-direction:column;gap:5px}}
