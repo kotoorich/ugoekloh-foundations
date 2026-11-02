@@ -185,7 +185,7 @@ def public_events():
 def public_settings():
     if not db:return {}
     try:
-        result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,address,default_currency").eq("id",1).maybe_single().execute()
+        result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,call_line,address,default_currency").eq("id",1).maybe_single().execute()
         return (result.data or {}) if result is not None else {}
     except Exception:
         # Public contact settings are optional; never let an empty settings
