@@ -21,7 +21,8 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Contact, volunteer, partnership, newsletter welcome, donor payment confirmation, staff invitation and case-assignment email triggers
 - [ ] Newsletter campaign composer, unsubscribe links/automation and consent lifecycle
 - [ ] Password reset/first-login enforcement email flow
-- [ ] Search, SEO metadata, sitemap and social sharing metadata
+- [ ] Public site search and XML sitemap (requires confirmed production domain)
+- [x] Route-aware page titles, descriptions, social-sharing metadata and admin no-index controls
 - [x] Footer navigation checked against registered routes; contact email and owner-managed phone/address are actionable when configured
 
 ## Donations and payments
@@ -33,7 +34,7 @@ Collaborate with health facilities to provide medical support so vulnerable and 
 - [x] Programme totals are recalculated from verified paid donations only
 - [x] Downloadable donor receipt (HTML, printable to PDF)
 - [x] Donor confirmation email trigger after verified successful payment (requires configured provider)
-- [x] Admin donation ledger, filters, Paystack verification, refund recording, CSV export and receipt download
+- [x] Admin donation ledger, filters, Paystack verification, Paystack refund requests with webhook status tracking, CSV export and receipt download
 - [ ] End-to-end test-mode and live-mode verification, including one general, one programme donation
 - [ ] Verify payment/email idempotency under webhook and return-page race conditions
 
