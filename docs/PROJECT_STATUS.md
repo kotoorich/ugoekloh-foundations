@@ -8,7 +8,7 @@ Support children recovering from burn injuries and other vulnerable children thr
 ## Public website scope
 - [x] Homepage, hero, mission statement, programme cards, campaign cards, impact area and calls to action
 - [x] About, live programmes, campaigns, stories/news, donation, volunteer, partner and contact routes
-- [x] News article listing
+- [x] News article listing\n- [x] Public projects and partner directory connected to admin-managed content
 - [x] Events listing
 - [x] Gallery backed by approved Supabase media with consent flag
 - [x] FAQs
