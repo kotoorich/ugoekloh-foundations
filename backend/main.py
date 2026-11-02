@@ -140,7 +140,8 @@ async def verify_donation(reference: str):
     if donation.get("status") != "paid":
         client.table("donations").update({"status":"paid","provider_transaction_id":str(tx.get("id"))}).eq("reference",reference).execute()
         await send_email(client,to=donation["donor_email"],subject="Your donation has been received",heading="Thank you for your donation",message=f"Thank you {donation.get('donor_name') or 'for your support'}. Your donation of GHS {Decimal(str(donation['amount'])):.2f} has been verified successfully.",category="donation_confirmation")
-    return {"status":"paid","reference":reference}
+    sent_log=client.table("email_delivery_logs").select("id").eq("recipient",donation["donor_email"]).eq("category","donation_confirmation").eq("status","sent").limit(1).execute().data or []
+    return {"status":"paid","reference":reference,"email_sent":bool(sent_log)}
 
 @app.post("/api/payments/paystack/webhook")
 async def paystack_webhook(request: Request):
