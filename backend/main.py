@@ -1,4 +1,5 @@
 import os, uuid
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 import httpx
@@ -280,7 +281,7 @@ async def assign_case(case_id: str, payload: dict, request: Request):
         staff=client.table("staff_profiles").select("user_id,full_name,is_active").eq("user_id",assigned_to).maybe_single().execute().data
         if not staff or not staff.get("is_active"):
             raise HTTPException(422,"Choose an active staff member.")
-    client.table("beneficiaries").update({"assigned_to":assigned_to,"assigned_at":"now()" if assigned_to else None}).eq("id",case_id).execute()
+    client.table("beneficiaries").update({"assigned_to":assigned_to,"assigned_at":datetime.now(timezone.utc).isoformat() if assigned_to else None}).eq("id",case_id).execute()
     client.table("audit_logs").insert({"actor":actor.id,"action":"case_assigned","entity":"beneficiaries","entity_id":case_id,"details":{"assigned_to":assigned_to}}).execute()
     if assigned_to:
         try:
