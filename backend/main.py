@@ -165,8 +165,8 @@ def require_super_admin(request: Request):
     if not user:
         raise HTTPException(401,"Your session is invalid or expired.")
     profile=client.table("staff_profiles").select("role,is_active").eq("user_id",user.id).maybe_single().execute().data
-    if not profile or profile.get("role")!="super_admin" or not profile.get("is_active"):
-        raise HTTPException(403,"Only an active super administrator can create staff accounts.")
+    if not profile or profile.get("role") not in ("super_admin","admin") or not profile.get("is_active"):
+        raise HTTPException(403,"Only an active administrator can create staff accounts.")
     return user
 
 @app.get("/api/public/news")
