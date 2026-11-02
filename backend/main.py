@@ -56,13 +56,13 @@ def health(): return {"status":"ok","service":"ugo-ekloh-foundation-api"}
 @app.get("/api/public/home")
 def home():
     if not db: return {"programmes":[],"impact":{}}
-    programs=db.table("programmes").select("id,title,category,description,image_path,amount_raised").eq("status","published").in_("slug",["fire-safety-in-the-home","children-and-fire-management-at-home"]).order("created_at").limit(2).execute().data
+    programs=db.table("programmes").select("id,title,slug,category,description,image_path,amount_raised").eq("status","published").in_("slug",["fire-safety-in-the-home","children-and-fire-management-at-home"]).order("created_at").execute().data
     return {"programmes":programs or [],"impact":{}}
 
 @app.get("/api/public/programmes")
 def public_programmes():
     if not db:return {"items":[]}
-    items=db.table("programmes").select("id,title,category,description,amount_raised,image_path,status").eq("status","published").order("created_at",desc=True).execute().data
+    items=db.table("programmes").select("id,title,slug,category,description,amount_raised,image_path,status").eq("status","published").in_("slug",["fire-safety-in-the-home","children-and-fire-management-at-home"]).order("created_at").execute().data
     return {"items":items or []}
 
 @app.post("/api/public/contact")
@@ -184,8 +184,13 @@ def public_events():
 @app.get("/api/public/settings")
 def public_settings():
     if not db:return {}
-    result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,address,default_currency").eq("id",1).maybe_single().execute()
-    return result.data or {}
+    try:
+        result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,address,default_currency").eq("id",1).maybe_single().execute()
+        return (result.data or {}) if result is not None else {}
+    except Exception:
+        # Public contact settings are optional; never let an empty settings
+        # table break the public site footer or settings endpoint.
+        return {}
 
 @app.post("/api/public/newsletter")
 def newsletter(payload: NewsletterRequest):
