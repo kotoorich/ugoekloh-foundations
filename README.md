@@ -138,28 +138,10 @@ The two storage buckets are created by the migrations:
 4. Add that same domain to the allowed redirect URLs.
 5. Configure a reliable authentication email sender before inviting staff.
 
-### Create the first super-administrator
+### First administrator — automatic setup
 
-Public admin registration should not be enabled. Provision the first administrator deliberately:
+Set `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD` (minimum 12 characters), and `INITIAL_ADMIN_NAME` in Render. On backend startup, the system creates the Auth user if needed and grants the initial `super_admin` role. Existing users are not given a new password. Remove the initial password variable after the first successful setup. No SQL or manual user creation is needed.
 
-1. Open **Authentication → Users**.
-2. Click **Add user** and create the foundation's initial administrator using an email address controlled by the foundation.
-3. After the user is created, copy the user's UUID from the Users page.
-4. Open **SQL Editor → New query**.
-5. Paste the SQL below, replacing the sample UUID and name with the real values.
-
-    insert into public.staff_profiles (user_id, full_name, role, is_active)
-    values (
-      'PASTE_THE_REAL_AUTH_USER_UUID_HERE',
-      'Foundation Super Administrator',
-      'super_admin',
-      true
-    );
-
-6. Click **Run**.
-7. Keep the administrator email and password secure. Use the admin sign-in page on the deployed website to sign in.
-
-Example UUID format only: 11111111-2222-3333-4444-555555555555. Do not use that example UUID; copy the actual UUID belonging to the user you just created.
 
 ---
 
