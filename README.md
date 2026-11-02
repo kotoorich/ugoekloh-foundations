@@ -23,7 +23,7 @@ A full-stack foundation website for publishing approved updates, receiving donat
 | Vercel | React website hosting | https://vercel.com |
 | Paystack | Online donations, when enabled | https://paystack.com |
 
-For local development, install Git, Node.js LTS and Python 3.11.
+For local development, install Git, Node.js LTS and Python 3.11. The Render backend is pinned to Python 3.11.11 in `backend/.python-version` to prevent an incompatible default runtime from triggering a Rust source build.
 
 Repository: https://github.com/kotoorich/ugoekloh-foundations
 
@@ -172,7 +172,7 @@ Deploy the backend first. This gives you an API address that you will later ente
 
 | Render field | Enter this |
 |---|---|
-| Runtime | Python |
+| Runtime | Python 3.11.11 (pinned automatically) |
 | Root Directory | backend |
 | Build Command | pip install -r requirements.txt |
 | Start Command | uvicorn main:app --host 0.0.0.0 --port $PORT |
@@ -231,7 +231,7 @@ API documentation:
 
     https://YOUR_RENDER_SERVICE.onrender.com/docs
 
-If the health check does not return the expected response, open Render **Logs** and fix the error before proceeding.
+If the health check does not return the expected response, open Render **Logs** and fix the error before proceeding. If Render still selects Python 3.14, confirm Root Directory is `backend`, then use **Clear build cache & deploy**.
 
 ---
 
