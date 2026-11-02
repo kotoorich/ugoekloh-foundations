@@ -148,6 +148,30 @@ async def verify_donation(reference: str):
         email_sent=bool(mail_result.get("sent"))
     return {"status":"paid","reference":reference,"email_sent":email_sent}
 
+
+@app.post("/api/admin/donations/{reference}/refund")
+async def refund_donation(reference: str, request: Request):
+    require_super_admin(request)
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(503,"Paystack refund service is not configured.")
+    client=database()
+    donation=client.table("donations").select("id,status,provider_transaction_id,amount").eq("reference",reference).maybe_single().execute().data
+    if not donation:
+        raise HTTPException(404,"Donation reference not found.")
+    if donation.get("status")=="refunded":
+        return {"ok":True,"status":"refunded","already_refunded":True}
+    if donation.get("status")!="paid":
+        raise HTTPException(409,"Only verified paid donations can be refunded.")
+    payload={"transaction":donation.get("provider_transaction_id") or reference}
+    async with httpx.AsyncClient(timeout=30) as http:
+        response=await http.post("https://api.paystack.co/refund",headers={"Authorization":f"Bearer {PAYSTACK_SECRET_KEY}","Content-Type":"application/json"},json=payload)
+    data=response.json()
+    if response.status_code>=400 or not data.get("status"):
+        raise HTTPException(502,"Paystack did not accept the refund request. The donation remains recorded as paid.")
+    client.table("donations").update({"status":"refunded","refunded_at":datetime.now(timezone.utc).isoformat()}).eq("reference",reference).execute()
+    client.table("audit_logs").insert({"actor":require_super_admin(request).id,"action":"donation_refund_requested","entity":"donations","entity_id":donation["id"],"details":{"reference":reference,"provider":"paystack"}}).execute()
+    return {"ok":True,"status":"refunded"}
+
 @app.post("/api/payments/paystack/webhook")
 async def paystack_webhook(request: Request):
     # Verify authenticity using Paystack's HMAC SHA-512 signature.
