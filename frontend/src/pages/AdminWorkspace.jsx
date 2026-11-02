@@ -14,7 +14,7 @@ const ROLE_MODULES = {
   staff: ['overview','volunteer_applications','contact_messages']
 };
 const CONTENT_FIELDS = {
-  campaigns:['title','description','goal_amount','amount_raised','status','image_path','start_date','end_date'],
+  campaigns:['title','description','goal_amount','status','image_path','start_date','end_date'],
   programmes:['title','category','description','body','status','image_path'],
   projects:['title','description','location','status','image_path'],
   news:['title','slug','excerpt','body','cover_image_path','status','published_at'],
