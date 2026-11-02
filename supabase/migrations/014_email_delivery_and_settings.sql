@@ -2,6 +2,7 @@ create table if not exists public.email_settings (
  id integer primary key default 1 check (id=1),
  enabled boolean not null default false,
  provider text not null default 'gmail' check (provider in ('gmail','sendpulse')),
+ created_at timestamptz not null default now(),
  updated_at timestamptz not null default now(),
  updated_by uuid references auth.users(id)
 );
