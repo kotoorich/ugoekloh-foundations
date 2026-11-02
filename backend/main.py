@@ -223,6 +223,14 @@ class StaffCreateRequest(BaseModel):
     role: str = Field(pattern="^(admin|editor|finance|case_worker|staff)$")
     password: str = Field(min_length=12,max_length=128)
 
+class PartnershipRequest(BaseModel):
+    organization_name: str = Field(min_length=2,max_length=180)
+    contact_name: str = Field(min_length=2,max_length=120)
+    email: EmailStr
+    phone: str = Field(default="",max_length=40)
+    partnership_type: str = Field(default="General partnership",max_length=120)
+    message: str = Field(min_length=5,max_length=4000)
+
 class NewsletterRequest(BaseModel):
     email: EmailStr
 
@@ -350,11 +358,8 @@ async def assign_case(case_id: str, payload: dict, request: Request):
     return {"ok":True,"assigned_to":assigned_to}
 
 @app.post('/api/public/partnerships')
-async def create_partnership(payload: dict):
-    required=['organization_name','contact_name','email','message']
-    if any(not str(payload.get(k,'')).strip() for k in required):
-        raise HTTPException(422,'Organization, contact name, email and message are required.')
-    safe={k:str(payload.get(k,''))[:4000] for k in ['organization_name','contact_name','email','phone','partnership_type','message']}
+async def create_partnership(payload: PartnershipRequest):
+    safe={k:str(v) for k,v in payload.model_dump().items()}
     client=database()
     result=client.table('partnership_applications').insert(safe).execute()
     mail_result=await send_email(client,to=safe['email'],subject="Partnership enquiry received",heading="Thank you for your interest",message="Your partnership enquiry has been received. Our team will review the information and contact you.",category="partnership_acknowledgement")
