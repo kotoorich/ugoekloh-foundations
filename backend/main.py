@@ -188,3 +188,12 @@ def create_staff(payload: StaffCreateRequest, request: Request):
         raise
     except Exception as exc:
         raise HTTPException(400,"Could not create the staff account. Check that the email is not already registered and the service configuration is valid.") from exc
+
+@app.post('/api/public/partnerships')
+def create_partnership(payload: dict):
+    required=['organization_name','contact_name','email','message']
+    if any(not str(payload.get(k,'')).strip() for k in required):
+        raise HTTPException(422,'Organization, contact name, email and message are required.')
+    safe={k:str(payload.get(k,''))[:4000] for k in ['organization_name','contact_name','email','phone','partnership_type','message']}
+    result=database().table('partnership_applications').insert(safe).execute()
+    return {'ok':True,'message':'Thank you. Your partnership enquiry has been received.'}
