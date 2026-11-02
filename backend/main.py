@@ -376,14 +376,16 @@ async def assign_case(case_id: str, payload: dict, request: Request):
             raise HTTPException(422,"Choose an active staff member.")
     client.table("beneficiaries").update({"assigned_to":assigned_to,"assigned_at":datetime.now(timezone.utc).isoformat() if assigned_to else None}).eq("id",case_id).execute()
     client.table("audit_logs").insert({"actor":actor.id,"action":"case_assigned","entity":"beneficiaries","entity_id":case_id,"details":{"assigned_to":assigned_to}}).execute()
+    email_sent=False
     if assigned_to:
         try:
             staff_user=client.auth.admin.get_user_by_id(assigned_to).user
             if staff_user and staff_user.email:
-                await send_email(client,to=staff_user.email,subject="A child-support case has been assigned to you",heading="New case assignment",message=f"Case reference {case.get('case_reference') or case_id} has been assigned to you. Sign in to the secure staff workspace to review the case. Do not share case details outside approved channels.",category="case_assignment")
+                mail_result=await send_email(client,to=staff_user.email,subject="A child-support case has been assigned to you",heading="New case assignment",message=f"Case reference {case.get('case_reference') or case_id} has been assigned to you. Sign in to the secure staff workspace to review the case. Do not share case details outside approved channels.",category="case_assignment")
+                email_sent=bool(mail_result.get("sent"))
         except Exception:
             pass
-    return {"ok":True,"assigned_to":assigned_to}
+    return {"ok":True,"assigned_to":assigned_to,"email_sent":email_sent}
 
 @app.post('/api/public/partnerships')
 async def create_partnership(payload: PartnershipRequest):
