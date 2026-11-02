@@ -175,7 +175,11 @@ class NewsletterRequest(BaseModel):
 
 class EmailSettingsUpdate(BaseModel):
     enabled: bool
-    provider: str = Field(pattern='^(gmail|sendpulse)
+    provider: str = Field(pattern="^(gmail|sendpulse)$")
+
+class EmailTestRequest(BaseModel):
+    recipient: EmailStr
+
 def require_super_admin(request: Request):
     client=database()
     header=request.headers.get("authorization","")
