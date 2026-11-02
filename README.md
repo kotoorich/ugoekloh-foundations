@@ -125,14 +125,14 @@ These are sample formats, not real credentials.
 
 ## 4. Automatic database setup — no manual SQL steps
 
-The backend now applies the SQL files in `supabase/migrations/` automatically when it starts:
+The backend applies the numbered SQL files in `supabase/migrations/` automatically during startup, using the private `SUPABASE_DB_URL` connection. The deployment guide documents the same process:
 
 - On the first deployment, it creates the schema, security policies, indexes, triggers and storage buckets.
 - It records completed migrations in `public.foundation_schema_migrations`.
 - On later redeployments, it applies only migration files that have not run before. Existing records are not deleted.
 - New database changes are delivered as a new numbered SQL migration file; do not edit an already-applied migration.
 
-**One-time connection setting:** add `SUPABASE_DB_URL` to Render. In Supabase, open **Connect → Session pooler**, copy the URI, and replace its password placeholder with the database password. This is a private backend secret; never put it in Vercel or GitHub.
+**One-time connection setting:** add `SUPABASE_DB_URL` to Render. In Supabase, open **Connect → Session pooler**, copy the URI, and replace its password placeholder with the database password. This is a private backend secret; never put it in Vercel or GitHub. Follow the same instructions in [the deployment guide](docs/DEPLOYMENT.md).
 
 The migration runner uses this private connection to apply schema changes. The Supabase service-role key alone cannot create PostgreSQL tables or policies through the normal REST API, which is why this separate database connection is necessary.
 
@@ -179,16 +179,25 @@ Deploy the backend first. This gives you an API address that you will later ente
 7. Open the service's **Environment** tab.
 8. Add the variables in the following table.
 
-### Render environment variables — sample template
+### Render environment variables — same list as the deployment guide
 
-| Key | Example value |
+Add these to **Render → Your Web Service → Environment**. The names and purposes below match [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+| Key | Value to enter |
 |---|---|
-| SUPABASE_URL | https://YOUR_PROJECT_REF.supabase.co |
-| SUPABASE_SERVICE_ROLE_KEY | YOUR_SUPABASE_SERVICE_ROLE_KEY |
-| PAYSTACK_SECRET_KEY | Leave blank until Paystack is configured |
-| PAYSTACK_CALLBACK_URL | https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return |
-| FRONTEND_URL | https://YOUR_VERCEL_DOMAIN.vercel.app |
-| ALLOWED_ORIGINS | https://YOUR_VERCEL_DOMAIN.vercel.app |
+| `SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your private Supabase service-role/secret key |
+| `SUPABASE_DB_URL` | Supabase Session Pooler URI, including the database password |
+| `INITIAL_ADMIN_EMAIL` | Email address for the first foundation super-admin |
+| `INITIAL_ADMIN_PASSWORD` | Long random password (minimum 12 characters) |
+| `INITIAL_ADMIN_NAME` | Display name for the first super-admin |
+| `FRONTEND_URL` | Your exact Vercel website URL |
+| `ALLOWED_ORIGINS` | Your exact Vercel website URL |
+| `PAYSTACK_SECRET_KEY` | Leave empty until Paystack test mode is ready |
+| `PAYSTACK_CALLBACK_URL` | Your Vercel URL followed by `/donation/return` |
+
+Set the initial-admin values before the first deployment. After the backend successfully creates the administrator, remove `INITIAL_ADMIN_PASSWORD` from Render. The bootstrap does not overwrite the password of an existing Auth user and skips creating/promoting another account when an active super-admin already exists.
+
 
 At first, you may not yet know your Vercel domain. You can deploy Render with the Supabase values first, then return to Render and fill in FRONTEND_URL, PAYSTACK_CALLBACK_URL and ALLOWED_ORIGINS after Vercel gives you the real domain.
 
