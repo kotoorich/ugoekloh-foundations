@@ -100,7 +100,7 @@ At this point, if you have not deployed Vercel yet, you can temporarily use the 
 | Key | Value to enter |
 |---|---|
 | `VITE_SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | `YOUR_SUPABASE_PUBLISHABLE_OR_LEGACY_ANON_KEY` |
+| `VITE_SUPABASE_ANON_KEY` | `YOUR_SUPABASE_ANON_KEY` |
 | `VITE_API_URL` | `https://YOUR_RENDER_SERVICE.onrender.com` |
 
 5. Deploy and copy the exact Vercel domain assigned to the project.
