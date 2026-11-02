@@ -188,7 +188,7 @@ def public_events():
 @app.get("/api/public/settings")
 def public_settings():
     if not db:return {}
-    result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,address,default_currency").eq("id",1).maybe_single().execute()
+    result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,address,donation_instructions,default_currency").eq("id",1).maybe_single().execute()
     return result.data or {}
 
 @app.post("/api/public/newsletter")
