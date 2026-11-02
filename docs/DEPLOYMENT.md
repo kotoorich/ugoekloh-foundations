@@ -12,26 +12,13 @@ This is the detailed deployment checklist. The root `README.md` is the overview;
 
 **Important: this project does not currently need a `DATABASE_URL`.** The backend in `backend/main.py` connects through the Supabase Python client using `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Do not add a PostgreSQL connection string unless the backend is deliberately changed to use a direct PostgreSQL driver/SQLAlchemy.
 
-## 2. Supabase setup
+## 2. Automatic Supabase setup
 
-1. Create a Supabase project.
-2. Open **SQL Editor**.
-3. Run the six files in `supabase/migrations/` in this exact order, one at a time:
-   1. `001_initial_schema.sql`
-   2. `002_operations_and_safeguarding.sql`
-   3. `003_public_content_and_case_access.sql`
-   4. `004_case_documents_and_audit.sql`
-   5. `005_partnership_applications.sql`
-   6. `006_campaign_totals.sql`
-4. Wait for each query to succeed before running the next. If one fails, stop and resolve it; do not skip it.
-5. Open **Project Settings → API** (or **API Keys**, depending on the dashboard version) and copy:
-   - Project URL
-   - Publishable key, or legacy `anon` key
-   - Secret key, or legacy `service_role` key
-6. Confirm these two storage buckets exist:
-   - `foundation-media`: public, for approved public website media only.
-   - `beneficiary-private`: private, for restricted case documents.
-7. Under **Authentication → URL Configuration**, you will later add the deployed Vercel website URL as the Site URL and an allowed redirect URL.
+You do not need to paste SQL into the Supabase SQL Editor. The backend runs the versioned migrations in `supabase/migrations/` during startup and records each successful migration in `public.foundation_schema_migrations`. Later redeployments apply only new migration files and preserve existing data.
+
+Copy the **Session pooler** URI from Supabase **Connect → Session pooler** and add it to Render as `SUPABASE_DB_URL`. Replace the password placeholder in the URI with the project's database password. Keep this secret in Render only.
+
+The Supabase project must be active and the database credentials must have permission to create/alter the application's schema and storage policies. The normal project database owner credentials provide this access. The service-role API key by itself cannot execute arbitrary DDL.
 
 ### Which Supabase key is which?
 
@@ -61,6 +48,10 @@ This is the detailed deployment checklist. The root `README.md` is the overview;
 |---|---|
 | `SUPABASE_URL` | `https://YOUR_PROJECT_REF.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `YOUR_SUPABASE_SERVICE_ROLE_KEY` |
+| `SUPABASE_DB_URL` | Supabase Session Pooler connection URI |
+| `INITIAL_ADMIN_EMAIL` | Email for the first foundation super-admin |
+| `INITIAL_ADMIN_PASSWORD` | Long random password (minimum 12 characters) |
+| `INITIAL_ADMIN_NAME` | Display name for the first super-admin |
 | `PAYSTACK_SECRET_KEY` | Leave empty until Paystack test mode is ready |
 | `PAYSTACK_CALLBACK_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app/donation/return` |
 | `FRONTEND_URL` | `https://YOUR_VERCEL_DOMAIN.vercel.app` |
@@ -149,7 +140,7 @@ If Paystack is not configured, the site can record a donation pledge as **pendin
 
 ## 7. First deployment checklist
 
-- [ ] All six Supabase migrations completed successfully in order.
+- [ ] Render startup log confirms all pending database migrations were applied (or schema is already up to date).
 - [ ] Both storage buckets exist with the correct visibility.
 - [ ] Render health endpoint returns the expected JSON.
 - [ ] Vercel website loads.
@@ -157,30 +148,22 @@ If Paystack is not configured, the site can record a donation pledge as **pendin
 - [ ] Vercel has only the three frontend variables listed above.
 - [ ] Render has the six backend variables listed above.
 - [ ] No secret/service-role or Paystack key is exposed in Vercel or GitHub.
-- [ ] Initial super-admin account has been provisioned securely.
+- [ ] Initial super-admin was created from the private Render environment variables.
 - [ ] Contact, volunteer and partnership submissions reach the database.
 - [ ] Manual donation pledge remains pending until verified.
 - [ ] Paystack test transaction is verified before enabling live payments.
 - [ ] Private beneficiary documents cannot be accessed by the public.
 - [ ] Test on desktop and mobile.
 
-## 8. Initial super-admin account
+## 8. Automatic first administrator
 
-1. Supabase → **Authentication → Users** → add the foundation's first administrator.
-2. Copy that user's actual UUID.
-3. In SQL Editor, run this after replacing the UUID and display name:
+Set these private Render environment variables before the first deployment:
 
-```sql
-insert into public.staff_profiles (user_id, full_name, role, is_active)
-values (
-  'PASTE_THE_REAL_AUTH_USER_UUID_HERE',
-  'Foundation Super Administrator',
-  'super_admin',
-  true
-);
-```
+- `INITIAL_ADMIN_EMAIL`
+- `INITIAL_ADMIN_PASSWORD` (at least 12 characters)
+- `INITIAL_ADMIN_NAME`
 
-Do not use a sample UUID. Do not enable public administrator registration.
+On startup, the backend creates the Supabase Auth user if it does not already exist and assigns the `super_admin` profile. If the user already exists, its password is left unchanged and the profile is ensured. No public administrator registration is enabled. Remove the initial password variable from Render after the first successful bootstrap; normal sign-in continues to use Supabase Auth.
 
 ## 9. Environment variable source of truth
 
@@ -191,4 +174,4 @@ The repository includes ready-to-copy templates:
 
 The variable names in those files are the same names to enter in Vercel and Render. Copy the template into a local `.env` file for local development; in hosted dashboards, enter each key/value in the service's Environment Variables screen.
 
-There is intentionally no `DATABASE_URL` in either template: the current backend uses the Supabase client, not a direct PostgreSQL connection.
+The backend also uses `SUPABASE_DB_URL` privately at startup to apply versioned schema migrations; it is never exposed to the frontend.
