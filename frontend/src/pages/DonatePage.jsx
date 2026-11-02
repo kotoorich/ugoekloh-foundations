@@ -44,7 +44,7 @@ export default function DonatePage(){
       const data=await response.json();
       if(!response.ok)throw new Error(data.detail||'Unable to start your donation.');
       if(data.authorization_url){window.location.href=data.authorization_url;return;}
-      setStatus(data.message||'Your pledge has been recorded as pending. The foundation team will contact you with verified payment instructions.');
+      setStatus(data.message||'Your payment has not been confirmed. Please check your payment status before trying again.');
     }catch(error){setStatus(error.message||'Please try again.');}
     finally{setBusy(false);}
   }
@@ -78,7 +78,7 @@ export default function DonatePage(){
         {status&&<p className="form-status" role="status">{status}</p>}
         <small>Never share your PIN or mobile money password. The foundation will never ask you for them.</small>
       </form>
-      <aside className="donate-aside donation-aside"><span className="eyebrow">TRANSPARENT GIVING</span><h2>Your choice matters.</h2><p>When you select a campaign or programme, the donation is linked to that specific destination. General foundation support remains separate.</p><div className="donation-assurance"><ShieldCheck/><div><strong>Tracked responsibly</strong><p>Only verified, successful payments count toward campaign and programme totals. Pending pledges are not treated as money received.</p></div></div><div className="donation-assurance"><HandHeart/><div><strong>Give with confidence</strong><p>Online payments are verified by the payment provider. Your donation is counted only after the online payment provider confirms it.</p></div></div><Link to="/campaigns" className="text-link">Explore active campaigns <ArrowRight size={15}/></Link><Link to="/programmes" className="text-link">Explore programmes <ArrowRight size={15}/></Link></aside>
+      <aside className="donate-aside donation-aside"><span className="eyebrow">TRANSPARENT GIVING</span><h2>Your choice matters.</h2><p>When you select a campaign or programme, the donation is linked to that specific destination. General foundation support remains separate.</p><div className="donation-assurance"><ShieldCheck/><div><strong>Tracked responsibly</strong><p>Only verified, successful payments count toward campaign and programme totals. Pending online payments are not treated as money received.</p></div></div><div className="donation-assurance"><HandHeart/><div><strong>Give with confidence</strong><p>Online payments are verified by the payment provider. Your donation is counted only after the online payment provider confirms it.</p></div></div><Link to="/campaigns" className="text-link">Explore active campaigns <ArrowRight size={15}/></Link><Link to="/programmes" className="text-link">Explore programmes <ArrowRight size={15}/></Link></aside>
     </div></section>
   </>;
 }
