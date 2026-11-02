@@ -694,13 +694,13 @@ The **Audit trail** is available to authorised administrators and records select
 
 ## 32. Technical notes and deployment verification
 
-Migration `010_case_management_and_programme_goals.sql` adds nullable programme goals, case activity history, assigned-worker row-level security, activity permissions, administrator access to the active case-worker directory and restricted case-document metadata access.
+Migration `010_case_management_and_programme_goals.sql` adds nullable programme goals, case activity history, assigned-worker row-level security, activity permissions, administrator access to the active case-worker directory and restricted case-document metadata access. Migration `011_case_file_update_policy.sql` also ensures a case worker can update private files only inside a case folder assigned to that worker.
 
 The backend migration runner applies the migration on startup when `SUPABASE_DB_URL` is configured. After deploying, verify the following:
 
-1. Confirm GitHub main contains migration 010 and the latest frontend/backend commits.
+1. Confirm GitHub main contains migrations 010 and 011 and the latest frontend/backend commits.
 2. Deploy the latest commit to Render.
-3. Confirm Render startup logs show migration 010 completed successfully.
+3. Confirm Render startup logs show migrations 010 and 011 completed successfully.
 4. Deploy the latest frontend build to Vercel.
 5. Test with separate super administrator, administrator, case worker, editor and finance accounts.
 6. Create a synthetic test case and assign it to a test worker.
