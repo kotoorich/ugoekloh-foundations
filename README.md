@@ -138,7 +138,9 @@ The backend applies the numbered SQL files in `supabase/migrations/` automatical
 
 The migration runner uses this private connection to apply schema changes. The Supabase service-role key alone cannot create PostgreSQL tables or policies through the normal REST API, which is why this separate database connection is necessary.
 
-The migrations also seed the two published programmes **Fire Safety in the Home** and **Children and Fire Management at Home**. Their cover images can be uploaded from the programme editor; no image URL needs to be pasted.\n\nThe two storage buckets are created by the migrations:
+The migrations also seed the two published programmes **Fire Safety in the Home** and **Children and Fire Management at Home**. Their cover images can be uploaded from the programme editor; no image URL needs to be pasted.
+
+The two storage buckets are created by the migrations:
 - `foundation-media`: public approved media.
 - `beneficiary-private`: private case documents.
 
