@@ -13,6 +13,7 @@ export default function DonatePage(){
   const [destinationId,setDestinationId]=useState('');
   const [campaigns,setCampaigns]=useState([]);
   const [programmes,setProgrammes]=useState([]);
+  const [foundationSettings,setFoundationSettings]=useState({});
   const [status,setStatus]=useState('');
   const [busy,setBusy]=useState(false);
   const [loadingDestinations,setLoadingDestinations]=useState(true);
@@ -21,11 +22,13 @@ export default function DonatePage(){
     let active=true;
     Promise.all([
       fetch(apiUrl+'/api/public/campaigns').then(r=>r.ok?r.json():{items:[]}),
-      fetch(apiUrl+'/api/public/programmes').then(r=>r.ok?r.json():{items:[]})
-    ]).then(([campaignData,programmeData])=>{
+      fetch(apiUrl+'/api/public/programmes').then(r=>r.ok?r.json():{items:[]}),
+      fetch(apiUrl+'/api/public/settings').then(r=>r.ok?r.json():{})
+    ]).then(([campaignData,programmeData,settingsData])=>{
       if(!active)return;
       setCampaigns(campaignData.items||[]);
       setProgrammes(programmeData.items||[]);
+      setFoundationSettings(settingsData||{});
     }).catch(()=>{if(active)setStatus('We could not load current campaigns and programmes. You can still support the foundation generally.');})
       .finally(()=>{if(active)setLoadingDestinations(false);});
     return()=>{active=false;};
@@ -76,6 +79,7 @@ export default function DonatePage(){
         <div className="donor-fields"><label>Your name<input required maxLength="120" value={name} onChange={e=>setName(e.target.value)} placeholder="Full name"/></label><label>Email address<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label><label>Phone number<input required value={phone} onChange={e=>setPhone(e.target.value)} placeholder="e.g. 024 000 0000"/></label></div>
         <label>Payment method</label>
         <div className="payment-choice"><label><input type="radio" name="payment-method" checked={method==='paystack'} onChange={()=>setMethod('paystack')}/> Pay securely online</label><label><input type="radio" name="payment-method" checked={method==='manual'} onChange={()=>setMethod('manual')}/> Bank / Mobile Money instructions</label></div>
+        {method==='manual'&&<div className="manual-payment-instructions"><strong>Foundation payment instructions</strong><p>{foundationSettings.donation_instructions||'No manual payment instructions have been published yet. Submit your pledge and the foundation team will contact you directly.'}</p></div>}
         <button className="button button-full" disabled={busy||(destinationType!=='foundation'&&!loadingDestinations&&destinations.length===0)}>{busy?'Please wait…':method==='paystack'?'Continue to secure payment':'Submit donation pledge'} <ArrowRight size={16}/></button>
         {status&&<p className="form-status" role="status">{status}</p>}
         <small>Never share your PIN or mobile money password. The foundation will never ask you for them.</small>
