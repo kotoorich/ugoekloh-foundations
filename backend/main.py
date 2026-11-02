@@ -261,11 +261,35 @@ def create_staff(payload: StaffCreateRequest, request: Request):
         if not user: raise HTTPException(502,"The identity provider did not return a new user.")
         client.table("staff_profiles").insert({"user_id":user.id,"full_name":payload.full_name,"role":payload.role,"is_active":True}).execute()
         client.table("audit_logs").insert({"actor":actor.id,"action":"staff_created","entity":"staff_profiles","entity_id":user.id,"details":{"role":payload.role,"email":payload.email}}).execute()
-        return {"ok":True,"user_id":user.id,"email":payload.email,"role":payload.role}
+        mail_result=await send_email(client,to=str(payload.email),subject="Your foundation staff account is ready",heading="Welcome to the foundation team",message=f"Your staff account has been created with the role {payload.role.replace('_',' ')}. Contact the administrator through the agreed secure channel for your temporary sign-in details. You will be asked to update your password when that control is enabled.",category="staff_invitation")
+        return {"ok":True,"user_id":user.id,"email":payload.email,"role":payload.role,"email_sent":bool(mail_result.get("sent"))}
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(400,"Could not create the staff account. Check that the email is not already registered and the service configuration is valid.") from exc
+
+@app.post("/api/admin/cases/{case_id}/assign")
+async def assign_case(case_id: str, payload: dict, request: Request):
+    actor=require_super_admin(request)
+    client=database()
+    assigned_to=payload.get("assigned_to") or None
+    case=client.table("beneficiaries").select("id,case_reference,assigned_to").eq("id",case_id).maybe_single().execute().data
+    if not case:
+        raise HTTPException(404,"Case record not found.")
+    if assigned_to:
+        staff=client.table("staff_profiles").select("user_id,full_name,is_active").eq("user_id",assigned_to).maybe_single().execute().data
+        if not staff or not staff.get("is_active"):
+            raise HTTPException(422,"Choose an active staff member.")
+    client.table("beneficiaries").update({"assigned_to":assigned_to,"assigned_at":"now()" if assigned_to else None}).eq("id",case_id).execute()
+    client.table("audit_logs").insert({"actor":actor.id,"action":"case_assigned","entity":"beneficiaries","entity_id":case_id,"details":{"assigned_to":assigned_to}}).execute()
+    if assigned_to:
+        try:
+            staff_user=client.auth.admin.get_user_by_id(assigned_to).user
+            if staff_user and staff_user.email:
+                await send_email(client,to=staff_user.email,subject="A child-support case has been assigned to you",heading="New case assignment",message=f"Case reference {case.get('case_reference') or case_id} has been assigned to you. Sign in to the secure staff workspace to review the case. Do not share case details outside approved channels.",category="case_assignment")
+        except Exception:
+            pass
+    return {"ok":True,"assigned_to":assigned_to}
 
 @app.post('/api/public/partnerships')
 async def create_partnership(payload: dict):
