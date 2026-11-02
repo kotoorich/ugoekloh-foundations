@@ -8,12 +8,12 @@ Support children recovering from burn injuries and other vulnerable children thr
 ## Public website scope
 - [x] Homepage, hero, mission statement, programme cards, campaign cards, impact area and calls to action
 - [x] About, programmes, campaigns, stories, donation, volunteer, partner and contact routes
-- [ ] News article listing and article detail
-- [ ] Events listing and detail
-- [ ] Gallery backed by approved Supabase media
-- [ ] FAQs
-- [ ] Published impact reports
-- [ ] Privacy, terms, donation/refund and child safeguarding policy pages
+- [x] News article listing
+- [x] Events listing
+- [x] Gallery backed by approved Supabase media with consent flag
+- [x] FAQs
+- [x] Published impact reports
+- [x] Policy-page publishing module (approved policy text still must be supplied)
 - [ ] Newsletter subscription and email notifications
 - [ ] Search, SEO metadata, sitemap and social sharing metadata
 
@@ -32,13 +32,13 @@ Support children recovering from burn injuries and other vulnerable children thr
 - [x] Basic authenticated CRUD for programmes, campaigns, projects, news, events and partners
 - [x] Public media bucket upload from admin
 - [ ] Proper edit/create forms with validation and image previews
-- [ ] Staff account creation, deactivation and role assignment by super-admin (no staff approval gate)
-- [ ] Role-specific admin navigation and permission enforcement
-- [ ] Beneficiary case-management interface with guardian consent records and restricted documents
-- [ ] Donation, volunteer, contact-message and partnership management
+- [x] Staff account creation and activation/deactivation by super-admin
+- [x] Role-specific admin navigation and permission enforcement
+- [x] Beneficiary case registration, consent fields and role-restricted records (private document upload UI still pending)
+- [x] Donation ledger, volunteer and contact-message management (partnership workflow remains basic)
 - [ ] Audit-log viewer
 - [ ] Financial, campaign and impact reporting with CSV/PDF export
-- [ ] Admin settings for foundation profile, contact details, branding, payment instructions and email settings
+- [x] Foundation profile/contact/payment-instruction settings (branding and email-provider settings pending)
 - [ ] Dashboard charts and date-range filters
 
 ## Supabase and safeguarding
@@ -57,7 +57,7 @@ Support children recovering from burn injuries and other vulnerable children thr
 - [x] Render service configuration
 - [x] Local development and deployment guides
 - [x] GitHub Actions frontend build and backend compile validation
-- [ ] Add automated unit/integration tests
+- [ ] Add automated unit/integration tests beyond CI build and compile checks
 - [ ] Add error monitoring, backups, uptime monitoring and production security review
 
 ## Go-live blockers
