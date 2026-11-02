@@ -2,7 +2,7 @@
 
 ## A. Supabase
 1. Create a production Supabase project.
-2. Run migrations `001_initial_schema.sql`, `002_operations_and_safeguarding.sql` and `003_public_content_and_case_access.sql` in that order in SQL Editor.
+2. Run migrations `001_initial_schema.sql`, `002_operations_and_safeguarding.sql` `003_public_content_and_case_access.sql` and `004_case_documents_and_audit.sql` in that order in SQL Editor.
 3. Copy Project URL, anon key and service_role key from Project Settings → API.
 4. Configure Authentication → URL Configuration with your Vercel production domain and any preview domains you actually use.
 5. Keep the service_role key only in Render environment variables. It bypasses RLS and must never be exposed in the browser.
