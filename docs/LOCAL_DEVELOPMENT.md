@@ -33,7 +33,7 @@ cd ugoekloh-foundations
 
 **Key safety:** The frontend uses the publishable/anon key. The backend uses the secret/service-role key. Never put the backend key in the frontend or commit either local `.env` file to GitHub.
 
-**No DATABASE_URL is required:** the current FastAPI backend uses the Supabase Python client through `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+The backend also requires `SUPABASE_DB_URL` (the Supabase Session Pooler URI) to apply database migrations automatically when it starts.
 
 ## 3. Configure and run the React frontend
 
@@ -101,21 +101,9 @@ Keep both terminal windows open while developing.
 
 ## 5. Create the first administrator
 
-1. Supabase Dashboard → **Authentication → Users** → create the foundation's first administrator manually.
-2. Copy that user's actual UUID.
-3. In SQL Editor, run the following after replacing the UUID and display name:
-
-```sql
-insert into public.staff_profiles (user_id, full_name, role, is_active)
-values (
-  'PASTE_THE_REAL_AUTH_USER_UUID_HERE',
-  'Foundation Super Administrator',
-  'super_admin',
-  true
-);
-```
-
-Do not use a sample UUID and do not create a public administrator sign-up flow.
+1. Set `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD` (at least 12 characters), and `INITIAL_ADMIN_NAME` in `backend/.env`.
+2. The backend creates the first administrator and assigns the `super_admin` role automatically after applying the migrations.
+3. Remove `INITIAL_ADMIN_PASSWORD` from the environment after successful setup.
 
 ## Notes
 
