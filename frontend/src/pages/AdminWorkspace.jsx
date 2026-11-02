@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 const MODULES = [
   ['overview','Overview'],['campaigns','Campaigns'],['programmes','Programmes'],['projects','Projects'],['news','News'],['events','Events'],['partners','Partners'],
-  ['donations','Donations'],['volunteer_applications','Volunteers'],['contact_messages','Messages'],['beneficiaries','Child cases'],['staff_profiles','Staff'],['audit_logs','Audit trail'],['foundation_settings','Settings']
+  ['donations','Donations'],['volunteer_applications','Volunteers'],['contact_messages','Messages'],['beneficiaries','Child cases'],['staff_profiles','Staff'],['audit_logs','Audit trail'],['foundation_settings','Settings'],['faqs','FAQs'],['gallery_items','Gallery'],['impact_reports','Impact reports'],['site_pages','Policy pages'],['newsletter_subscribers','Newsletter']
 ];
 const ROLE_MODULES = {
   super_admin: MODULES.map(x=>x[0]),
@@ -19,7 +19,7 @@ const CONTENT_FIELDS = {
   projects:['title','description','location','status','image_path'],
   news:['title','slug','excerpt','body','cover_image_path','status','published_at'],
   events:['title','description','venue','starts_at','ends_at','status'],
-  partners:['name','website','description','status','logo_path']
+  partners:['name','website','description','status','logo_path'],faqs:['question','answer','sort_order','status'],gallery_items:['title','description','image_path','alt_text','consent_reference','consent_verified','status'],impact_reports:['title','reporting_period','summary','report_path','published_at','status'],site_pages:['slug','title','body','status']
 };
 const LABELS = {pending:'Pending',paid:'Paid',failed:'Failed',refunded:'Refunded',new:'New',unread:'Unread',in_review:'In review',approved:'Approved',declined:'Declined',active:'Active',inactive:'Inactive'};
 function money(value){return 'GHS '+Number(value||0).toLocaleString('en-GH',{minimumFractionDigits:2,maximumFractionDigits:2});}
