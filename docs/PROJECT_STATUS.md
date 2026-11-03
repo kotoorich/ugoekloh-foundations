@@ -1,6 +1,6 @@
 # Project scope and implementation checklist
 
-This file is the source-of-truth checklist for the Ugo E Kloh Foundation rebuild. Preserve the approved visual direction: premium humanitarian/nonprofit presentation, forest green, warm gold and cream, editorial serif headings, generous spacing, authentic photography, strong mobile layouts and a clear donation journey. Use the World Villages for Children reference as broad design inspiration; create original layouts and do not copy proprietary assets.
+This file is the source-of-truth checklist for the Ugoekloh Foundations rebuild. Preserve the approved visual direction: premium humanitarian/nonprofit presentation, forest green, warm gold and cream, editorial serif headings, generous spacing, authentic photography, strong mobile layouts and a clear donation journey. Use the World Villages for Children reference as broad design inspiration; create original layouts and do not copy proprietary assets.
 
 ## Agreed product mission
 Collaborate with health facilities to provide medical support so vulnerable and poor children with burns can recover and thrive, while building partnerships with local and global communities to create a network of care and support. Key programme areas: burn-prevention and safety education for families and communities, fire-management education and burn-management education. Protect children's dignity and privacy in every feature.
