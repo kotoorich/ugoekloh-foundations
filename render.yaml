@@ -44,6 +44,6 @@ services:
       - key: SENDPULSE_SENDER_EMAIL
         sync: false
       - key: EMAIL_SENDER_NAME
-        value: Ugo E Kloh Foundation
+        value: Ugoekloh Foundations
       - key: EMAIL_ADMIN_NOTIFY_TO
         sync: false
