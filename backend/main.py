@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from email_service import send_email
 
 load_dotenv()
-app = FastAPI(title="Ugo E Kloh Foundation API", version="1.0.0")
+app = FastAPI(title="Ugoekloh Foundations API", version="1.0.0")
 origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",") if x.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"], allow_headers=["*"])
 SUPABASE_URL=os.getenv("SUPABASE_URL","")
@@ -53,7 +53,7 @@ def initialize_database_and_admin():
     setup_database()
 
 @app.get("/api/health")
-def health(): return {"status":"ok","service":"ugo-ekloh-foundation-api"}
+def health(): return {"status":"ok","service":"ugoekloh-foundations-api"}
 
 @app.get("/api/public/home")
 def home():
@@ -290,7 +290,7 @@ async def test_email(payload: EmailTestRequest, request: Request):
     settings=client.table("email_settings").select("enabled").eq("id",1).maybe_single().execute().data or {}
     if not settings.get("enabled"):
         raise HTTPException(409,"Turn email mode ON before sending a test email.")
-    result=await send_email(client,to=str(payload.recipient),subject="Ugo E Kloh Foundation email test",heading="Email delivery is working",message="This is a test message from the foundation administration portal.",category="admin_test")
+    result=await send_email(client,to=str(payload.recipient),subject="Ugoekloh Foundations email test",heading="Email delivery is working",message="This is a test message from the foundation administration portal.",category="admin_test")
     if not result.get("sent"):
         raise HTTPException(502,"The selected email provider did not accept the test message. Check backend credentials and recent email activity.")
     return {"ok":True,"sent":True}
