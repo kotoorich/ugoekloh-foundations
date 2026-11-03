@@ -501,3 +501,38 @@
  .admin-main .workspace-stats article{padding:16px}
  .admin-main .workspace-stats strong{font-size:27px}
 }
+
+
+/* Correct admin desktop + mobile layout: target the classes rendered by AdminWorkspace.jsx */
+.admin-shell{display:block;width:100%;max-width:none;margin:0;padding:0;box-sizing:border-box;}
+.admin-workspace{display:block;width:100%;max-width:none;margin:0;box-sizing:border-box;}
+.admin-layout{display:grid;grid-template-columns:clamp(225px,19vw,285px) minmax(0,1fr);gap:0;width:100%;min-width:0;}
+.admin-sidebar{width:auto;min-width:0;box-sizing:border-box;}
+.admin-content{display:block;width:100%;min-width:0;max-width:none;box-sizing:border-box;}
+.admin-content .workspace-main{display:block;width:100%;min-width:0;max-width:none;box-sizing:border-box;padding:clamp(22px,2.4vw,38px);}
+.admin-content .workspace-heading{width:100%;min-width:0;}
+.admin-content .workspace-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;width:100%;}
+.admin-content .workspace-overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;width:100%;}
+.admin-content .workspace-list,.admin-content .workspace-editor,.admin-content .workspace-search{width:100%;max-width:none;min-width:0;box-sizing:border-box;}
+.admin-content .workspace-list>article{min-width:0;}
+.admin-content .workspace-record{display:flex;align-items:center;gap:14px;min-width:0;}
+.admin-content .workspace-record>div{min-width:0;overflow-wrap:anywhere;}
+@media(max-width:1100px) and (min-width:901px){
+ .admin-layout{grid-template-columns:215px minmax(0,1fr);}
+ .admin-content .workspace-main{padding:22px;}
+ .admin-content .workspace-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:900px){
+ .admin-layout{display:block;width:100%;}
+ .admin-content{width:100%;}
+ .admin-content .workspace-main{padding:20px 16px;}
+ .admin-content .workspace-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+ .admin-content .workspace-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:560px){
+ .admin-content .workspace-main{padding:16px 12px;}
+ .admin-content .workspace-stats,.admin-content .workspace-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+ .admin-content .workspace-stats article{padding:14px;}
+ .admin-content .workspace-stats strong{font-size:clamp(21px,6vw,28px);}
+ .admin-content .workspace-heading h1{font-size:clamp(22px,7vw,28px);}
+}
