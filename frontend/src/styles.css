@@ -771,3 +771,26 @@ body{color:var(--ink);overflow-x:hidden}
  .admin-content .workspace-actions input,.admin-content .workspace-actions select{width:100%;}
 }
 @media(max-width:370px){.admin-view-switch{display:none;}.admin-content .workspace-stats,.admin-content .workspace-overview-grid{grid-template-columns:1fr 1fr;}}
+
+
+/* Simplified admin section selector and calmer overview hierarchy */
+.admin-modulebar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px clamp(16px,3vw,34px);border-bottom:1px solid #e9eeeb;background:#fff;}
+.admin-modulebar-select{display:flex;align-items:center;gap:12px;min-width:260px;max-width:440px;}
+.admin-modulebar-select label{font-size:10px;font-weight:800;letter-spacing:1.2px;color:#829087;white-space:nowrap;}
+.admin-modulebar-select select{width:100%;min-width:0;border:1px solid #dfe7e1;border-radius:9px;padding:11px 35px 11px 12px;background:#f8faf8;color:#173d2b;font:600 13px inherit;}
+.admin-modulebar-hint{margin:0;color:#7a8981;font-size:12px;}
+.workspace-overview-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:22px 24px;margin-bottom:20px;border:1px solid #e6ece7;border-radius:14px;background:linear-gradient(120deg,#f5f9f5,#fff);}
+.workspace-overview-intro h2{margin:6px 0 7px;font-size:25px;}
+.workspace-overview-intro p{margin:0;color:#69786f;font-size:13px;line-height:1.6;}
+.workspace-overview-role{padding:8px 12px;border:1px solid #dce8df;border-radius:99px;background:#fff;color:#276443;font-size:11px;font-weight:700;text-transform:capitalize;white-space:nowrap;}
+.admin-content .workspace-stats{margin-bottom:22px;}
+.admin-content .workspace-stats article{border:1px solid #e7ece8;background:#fff;border-radius:12px;}
+.workspace-overview-actions{padding:22px 24px;border:1px solid #e6ece7;border-radius:14px;background:#fff;}
+.workspace-overview-actions h3{margin:0 0 6px;color:#173d2b;font-size:17px;}
+.workspace-overview-actions p{margin:0;color:#738077;font-size:13px;}
+.workspace-overview-shortcuts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px;}
+.workspace-overview-shortcuts button{display:flex;align-items:center;gap:10px;min-width:0;padding:14px;border:1px solid #e2e9e3;border-radius:10px;background:#f9fbf9;color:#27583c;font-weight:600;text-align:left;cursor:pointer;}
+.workspace-overview-shortcuts button:hover{background:#edf5ef;border-color:#cddfd1;}
+.workspace-overview-shortcuts button span{overflow-wrap:anywhere;font-size:12px;}
+@media(max-width:900px){.admin-modulebar{align-items:flex-start;flex-direction:column;gap:8px}.admin-modulebar-select{width:100%;max-width:none}.workspace-overview-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.admin-modulebar{padding:12px 16px}.admin-modulebar-select{min-width:0;gap:8px}.admin-modulebar-select label{font-size:9px}.admin-modulebar-hint{font-size:11px}.workspace-overview-intro{padding:17px;display:block}.workspace-overview-intro h2{font-size:22px}.workspace-overview-role{display:inline-flex;margin-top:12px}.workspace-overview-actions{padding:17px}.workspace-overview-shortcuts{gap:8px}.workspace-overview-shortcuts button{padding:12px;gap:8px}}
