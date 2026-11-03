@@ -16,3 +16,11 @@
 ## Validation
 - A production build could not be run in this environment because Vite dependencies were not available; `npm install` did not complete before timeout.
 - After extracting, run `cd frontend && npm install && npm run build` to validate in your environment.
+
+## Follow-up refinements — 3 November 2026
+- Rebuilt the admin portal visual system around a full-width desktop command centre, a dedicated green navigation rail, clearer content hierarchy, and responsive mobile drawer navigation.
+- Removed the public-site header and footer from every `/admin` route so staff see only the administration interface.
+- Removed the homepage impact/statistics display while retaining the narrative commitment section.
+- Kept child imagery restricted to foundation gallery records that are marked published and have `consent_verified=true`. Do not copy identifiable children’s burn-injury photographs from third-party websites without written image-reuse permission and documented guardian consent. Online patient stories are not automatically licensed for reuse.
+- The homepage gallery continues to use consent-verified foundation uploads; use distinct approved images and descriptive alt text when publishing new gallery items.
+- Build validation remains pending because dependency installation timed out in this environment. Run `cd frontend && npm install && npm run build` locally before deployment.
