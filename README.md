@@ -1,4 +1,4 @@
-# Ugo E Kloh Foundation — Website & Administration Platform
+# Ugoekloh Foundations — Website & Administration Platform
 
 A full-stack foundation website for publishing approved updates, receiving donations, managing volunteers and partners, and coordinating child-support cases.
 
@@ -70,7 +70,7 @@ GMAIL_SENDER_EMAIL=
 SENDPULSE_CLIENT_ID=
 SENDPULSE_CLIENT_SECRET=
 SENDPULSE_SENDER_EMAIL=
-EMAIL_SENDER_NAME=Ugo E Kloh Foundation
+EMAIL_SENDER_NAME=Ugoekloh Foundations
 EMAIL_ADMIN_NOTIFY_TO=
 ```
 
@@ -238,7 +238,7 @@ Expected response:
 
     {
       "status": "ok",
-      "service": "ugo-ekloh-foundation-api"
+      "service": "ugoekloh-foundations-api"
     }
 
 API documentation:
@@ -777,7 +777,7 @@ When email mode is OFF, public forms still save the submission and show a normal
 ### A. Create and configure the primary Gmail API sender
 
 1. Sign in to the Google account that will send foundation emails.
-2. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project, for example **Ugo E Kloh Foundation Mail**.
+2. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project, for example **Ugoekloh Foundations Mail**.
 3. Select that project and open **APIs & Services → Library**. Search for **Gmail API** and click **Enable**.
 4. Open **Google Auth Platform**. Configure the app name, support email and developer contact email. Choose **External** if the sender account is not restricted to a Google Workspace organisation.
 5. Under **Audience**, add the Gmail account that will authorize the sender as a test user while the app is in testing.
@@ -836,7 +836,7 @@ SENDPULSE_CLIENT_SECRET=
 SENDPULSE_SENDER_EMAIL=
 
 # Shared sender identity and optional internal alerts
-EMAIL_SENDER_NAME=Ugo E Kloh Foundation
+EMAIL_SENDER_NAME=Ugoekloh Foundations
 EMAIL_ADMIN_NOTIFY_TO=
 ```
 
