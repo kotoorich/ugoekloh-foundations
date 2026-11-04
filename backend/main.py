@@ -45,15 +45,41 @@ def database():
     if not db: raise HTTPException(503,"Database service is not configured.")
     return db
 
+# Populated by the startup hook so /api/health can report schema-setup problems
+# without the API ever refusing to boot because of them.
+STARTUP_STATE = {"database_ready": False, "database_error": None}
+
 
 @app.on_event("startup")
 def initialize_database_and_admin():
-    # Render redeploys safely apply only migration files not yet recorded.
-    from migration_runner import setup_database
-    setup_database()
+    # Schema setup is best-effort and runs off the startup path: a missing or
+    # unreachable database must not delay or stop the API from serving (the
+    # public site and health check stay up). Render redeploys safely apply only
+    # migration files not yet recorded, serialised by an advisory lock.
+    import threading
+
+    def run():
+        from migration_runner import setup_database
+        try:
+            setup_database()
+            STARTUP_STATE["database_ready"] = True
+            STARTUP_STATE["database_error"] = None
+        except Exception as exc:
+            STARTUP_STATE["database_ready"] = False
+            STARTUP_STATE["database_error"] = str(exc)
+            print(f"[database] Schema setup skipped: {exc}")
+
+    threading.Thread(target=run, name="database-setup", daemon=True).start()
 
 @app.get("/api/health")
-def health(): return {"status":"ok","service":"ugoekloh-foundations-api"}
+def health():
+    return {
+        "status": "ok",
+        "service": "ugoekloh-foundations-api",
+        "database_configured": db is not None,
+        "database_ready": STARTUP_STATE["database_ready"],
+        "database_error": STARTUP_STATE["database_error"],
+    }
 
 @app.get("/api/public/home")
 def home():
@@ -340,12 +366,11 @@ def change_own_password(payload: PasswordChangeRequest, request: Request):
     profile=client.table("staff_profiles").select("is_active,must_change_password").eq("user_id",user.id).maybe_single().execute().data
     if not profile or not profile.get("is_active"):
         raise HTTPException(403,"An active staff account is required.")
-    if not profile.get("must_change_password"):
-        raise HTTPException(409,"A password change is not currently required.")
+    # Any signed-in staff member may change their own password at any time.
     try:
         client.auth.admin.update_user_by_id(user.id,{"password":payload.new_password})
         client.table("staff_profiles").update({"must_change_password":False}).eq("user_id",user.id).execute()
-        client.table("audit_logs").insert({"actor":user.id,"action":"initial_password_changed","entity":"staff_profiles","entity_id":user.id,"details":{}}).execute()
+        client.table("audit_logs").insert({"actor":user.id,"action":"password_changed","entity":"staff_profiles","entity_id":user.id,"details":{}}).execute()
     except Exception as exc:
         raise HTTPException(400,"The password could not be updated. Please try again.") from exc
     return {"ok":True}
