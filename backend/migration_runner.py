@@ -10,6 +10,10 @@ from supabase import create_client
 ROOT = Path(__file__).resolve().parent.parent
 MIGRATIONS = ROOT / "supabase" / "migrations"
 
+# One stable key so concurrent Render instances (or a redeploy racing the old
+# instance) cannot apply the same migration at the same time.
+MIGRATION_ADVISORY_LOCK_KEY = 907_145_331
+
 
 def apply_migrations() -> None:
     database_url = os.getenv("SUPABASE_DB_URL", "").strip()
@@ -20,6 +24,10 @@ def apply_migrations() -> None:
         )
 
     with psycopg.connect(database_url, connect_timeout=20) as connection:
+        # Serialise schema setup across instances. The lock is released when the
+        # session ends, so a crash can never leave the database locked.
+        with connection.cursor() as cursor:
+            cursor.execute("select pg_advisory_lock(%s)", (MIGRATION_ADVISORY_LOCK_KEY,))
         with connection.cursor() as cursor:
             cursor.execute("""
                 create table if not exists public.foundation_schema_migrations (
@@ -111,5 +119,11 @@ def ensure_initial_admin() -> None:
 
 
 def setup_database() -> None:
+    """Apply migrations and bootstrap the first administrator.
+
+    Raises on failure so the caller can decide how to react. The API server
+    treats schema setup as best-effort (see ``main.py``) so a transient database
+    problem can never stop the public website and the donation API from booting.
+    """
     apply_migrations()
     ensure_initial_admin()
