@@ -1,9 +1,9 @@
-import os, uuid
+import os, uuid, base64, binascii
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from supabase import create_client, Client
@@ -27,6 +27,7 @@ class DonationRequest(BaseModel):
     phone: str = Field(min_length=7, max_length=30)
     method: str = "paystack"
     programme_id: Optional[str] = None
+    beneficiary_id: Optional[str] = None
 
 class ContactRequest(BaseModel):
     name: str = Field(min_length=2,max_length=120)
@@ -120,14 +121,22 @@ async def initialize_donation(payload: DonationRequest):
         raise HTTPException(422,"Only secure online payment is accepted.")
     if not PAYSTACK_SECRET_KEY:
         raise HTTPException(503,"Secure online donations are temporarily unavailable. Please try again later.")
+    if payload.programme_id and payload.beneficiary_id:
+        raise HTTPException(422,"Please choose a single destination for your donation.")
     if payload.programme_id:
         selected=client.table("programmes").select("id").eq("id",payload.programme_id).eq("status","published").maybe_single().execute().data
         if not selected: raise HTTPException(404,"That programme is no longer available. Please choose another destination.")
+    if payload.beneficiary_id:
+        # Only cases an administrator has published, with recorded guardian
+        # consent, may receive public donations.
+        selected=client.table("beneficiaries").select("id").eq("id",payload.beneficiary_id).eq("is_public",True).eq("consent_to_publish",True).is_("archived_at","null").maybe_single().execute().data
+        if not selected: raise HTTPException(404,"That child's support page is no longer available. Please choose another destination.")
 
+    destination = "beneficiary" if payload.beneficiary_id else ("programme" if payload.programme_id else "foundation")
     amount_pesewas=int((payload.amount*100).quantize(Decimal("1")))
     ref="UEKF-"+uuid.uuid4().hex[:18].upper()
-    metadata={"donor_name":payload.name,"donor_phone":payload.phone,"programme_id":payload.programme_id,"donation_destination":"programme" if payload.programme_id else "foundation"}
-    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":str(payload.email),"donor_phone":payload.phone,"status":"pending","programme_id":payload.programme_id,"payment_method":"paystack"}
+    metadata={"donor_name":payload.name,"donor_phone":payload.phone,"programme_id":payload.programme_id,"beneficiary_id":payload.beneficiary_id,"donation_destination":destination}
+    row={"reference":ref,"amount":float(payload.amount),"currency":"GHS","donor_name":payload.name,"donor_email":str(payload.email),"donor_phone":payload.phone,"status":"pending","programme_id":payload.programme_id,"beneficiary_id":payload.beneficiary_id,"payment_method":"paystack"}
     try:
         client.table("donations").insert(row).execute()
     except Exception as exc:
@@ -275,7 +284,12 @@ class EmailSettingsUpdate(BaseModel):
 class EmailTestRequest(BaseModel):
     recipient: EmailStr
 
-def require_super_admin(request: Request):
+def require_staff(request: Request, roles: Optional[tuple] = None):
+    """Authenticate the bearer token and return (user, profile).
+
+    Pass `roles` to restrict the action to specific staff roles. Any active
+    staff member is accepted when `roles` is omitted.
+    """
     client=database()
     header=request.headers.get("authorization","")
     if not header.lower().startswith("bearer "):
@@ -287,9 +301,16 @@ def require_super_admin(request: Request):
         raise HTTPException(401,"Your session is invalid or expired.")
     if not user:
         raise HTTPException(401,"Your session is invalid or expired.")
-    profile=client.table("staff_profiles").select("role,is_active").eq("user_id",user.id).maybe_single().execute().data
-    if not profile or profile.get("role") not in ("super_admin","admin") or not profile.get("is_active"):
-        raise HTTPException(403,"Only an active administrator can create staff accounts.")
+    profile=client.table("staff_profiles").select("role,is_active,full_name").eq("user_id",user.id).maybe_single().execute().data
+    if not profile or not profile.get("is_active"):
+        raise HTTPException(403,"Your staff account is not active. Contact an administrator.")
+    if roles and profile.get("role") not in roles:
+        raise HTTPException(403,"Your role does not allow this action.")
+    return user, profile
+
+
+def require_super_admin(request: Request):
+    user, _ = require_staff(request, ("super_admin","admin"))
     return user
 
 
@@ -427,3 +448,324 @@ async def create_partnership(payload: PartnershipRequest):
     if admin_to:
         await send_email(client,to=admin_to,subject="New partnership enquiry",heading="A new partnership enquiry was received",message=f"A partnership enquiry from {safe['organization_name']} is ready for review in the Admin Dashboard.",category="partnership_admin_notification")
     return {'ok':True,'message':'Thank you. Your partnership enquiry has been received.','email_sent':bool(mail_result.get('sent'))}
+
+
+# ---------------------------------------------------------------------------
+# Images stored in the database
+#
+# Administrators upload an image, the backend records it and returns a
+# "db:<id>" token. That token is stored in the same image_path columns used by
+# bucket-backed images, so a single resolver in the frontend can handle both.
+# Only public images are served without authentication.
+# ---------------------------------------------------------------------------
+
+MAX_IMAGE_BYTES = 2 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/avif": "avif",
+    "image/svg+xml": "svg",
+}
+
+
+class ImageUpload(BaseModel):
+    data_url: str = Field(max_length=3_000_000)
+    alt_text: Optional[str] = Field(default=None, max_length=300)
+    is_public: bool = True
+
+
+# SVG is markup, not a raster format. Stored SVG that can execute script would be
+# served from our own origin, so active content is refused outright.
+SVG_ACTIVE_MARKERS = (b"<script", b"javascript:", b"onload=", b"onerror=",
+                      b"<iframe", b"<embed", b"<object", b"<use ")
+
+
+def decode_image_data_url(data_url: str) -> tuple[str, bytes]:
+    """Validate a data URL and return (mime_type, raw_bytes).
+
+    Raises HTTPException with a message suitable for display to the operator.
+    """
+    if not data_url.startswith("data:"):
+        raise HTTPException(422, "The image payload is not a data URL.")
+    if "," not in data_url:
+        raise HTTPException(422, "The image payload is malformed.")
+    header, encoded = data_url.split(",", 1)
+    mime = header[5:].split(";", 1)[0].strip().lower()
+    if mime not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(422, "Upload a JPEG, PNG, WebP, AVIF or SVG image.")
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(422, "The image data could not be decoded.")
+    if not raw:
+        raise HTTPException(422, "The image file is empty.")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise HTTPException(413, "Images must be 2 MB or smaller. Resize the file and try again.")
+    if mime == "image/svg+xml":
+        lowered = raw.lower()
+        for marker in SVG_ACTIVE_MARKERS:
+            if marker in lowered:
+                raise HTTPException(422, "This SVG contains active content and cannot be uploaded. Export it as a flat SVG or a PNG.")
+    return mime, raw
+
+
+def build_public_case(row: dict) -> dict:
+    """Project a beneficiary row onto the fields that are safe to publish.
+
+    Any field not named here is deliberately dropped, so guardian contact
+    details, medical notes and internal references cannot leak through the
+    public endpoint even if the query changes.
+    """
+    target = float(row.get("target_amount") or 0)
+    raised = float(row.get("amount_raised") or 0)
+    return {
+        "id": row["id"],
+        "reference": row.get("case_reference"),
+        "display_name": row.get("public_display_name") or "A child in our care",
+        "story": row.get("public_story"),
+        "support_need": row.get("support_need"),
+        "image_path": row.get("image_path"),
+        "is_critical": bool(row.get("is_critical")),
+        "target_amount": target,
+        "amount_raised": raised,
+        "progress": round(min(raised / target * 100, 100), 1) if target > 0 else 0,
+    }
+
+
+@app.post("/api/admin/images")
+async def upload_database_image(payload: ImageUpload, request: Request):
+    user, _ = require_staff(request)
+    mime, raw = decode_image_data_url(payload.data_url)
+    client = database()
+    record = {
+        "mime_type": mime,
+        "byte_size": len(raw),
+        "data": base64.b64encode(raw).decode("ascii"),
+        "is_public": payload.is_public,
+        "alt_text": payload.alt_text,
+        "uploaded_by": user.id,
+    }
+    try:
+        created = client.table("images").insert(record).execute().data
+    except Exception as exc:
+        raise HTTPException(502, "The image could not be stored. Please try again.") from exc
+    if not created:
+        raise HTTPException(502, "The image could not be stored. Please try again.")
+    image_id = created[0]["id"]
+    return {"ok": True, "token": f"db:{image_id}", "id": image_id, "mime_type": mime, "byte_size": len(raw)}
+
+
+@app.get("/api/images/{image_id}")
+def serve_database_image(image_id: str, request: Request):
+    client = database()
+    try:
+        uuid.UUID(image_id)
+    except ValueError:
+        raise HTTPException(404, "Image not found.")
+    row = client.table("images").select("mime_type,data,is_public").eq("id", image_id).maybe_single().execute().data
+    if not row:
+        raise HTTPException(404, "Image not found.")
+    if not row.get("is_public"):
+        # Private imagery is casework material: only signed-in staff may read it.
+        require_staff(request)
+    try:
+        raw = base64.b64decode(row["data"])
+    except (binascii.Error, ValueError, KeyError):
+        raise HTTPException(500, "The stored image is unreadable.")
+    return Response(
+        content=raw,
+        media_type=row.get("mime_type") or "application/octet-stream",
+        headers={"Cache-Control": "public, max-age=86400" if row.get("is_public") else "private, max-age=300"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public child case feed
+#
+# Serves only the columns that are safe to publish. Guardian contact details,
+# medical notes, internal references and documents are never selected, so a
+# mistake in the UI cannot leak them.
+# ---------------------------------------------------------------------------
+
+PUBLIC_CASE_COLUMNS = (
+    "id,case_reference,public_display_name,public_story,support_need,"
+    "target_amount,amount_raised,image_path,is_critical,created_at"
+)
+
+
+@app.get("/api/public/cases")
+def public_cases():
+    client = database()
+    try:
+        rows = (client.table("beneficiaries")
+                .select(PUBLIC_CASE_COLUMNS)
+                .eq("is_public", True)
+                .eq("consent_to_publish", True)
+                .is_("archived_at", "null")
+                .order("is_critical", desc=True)
+                .order("created_at", desc=True)
+                .limit(100)
+                .execute().data) or []
+    except Exception:
+        return {"items": []}
+    items = [build_public_case(row) for row in rows]
+    return {"items": items}
+
+
+# ---------------------------------------------------------------------------
+# Allocation ledger
+# ---------------------------------------------------------------------------
+
+class AllocationRequest(BaseModel):
+    destination_type: str = Field(pattern="^(programme|project|beneficiary|general)$")
+    destination_id: Optional[str] = None
+    amount: Decimal = Field(gt=0, le=Decimal("100000000"), decimal_places=2)
+    note: Optional[str] = Field(default=None, max_length=500)
+
+
+ALLOCATION_ROLES = ("super_admin", "admin", "finance")
+ALLOCATION_DESTINATIONS = {
+    "programme": "programmes",
+    "project": "projects",
+    "beneficiary": "beneficiaries",
+}
+
+
+@app.get("/api/admin/funds/summary")
+def funds_summary(request: Request):
+    require_staff(request, ALLOCATION_ROLES)
+    client = database()
+    summary = client.rpc("foundation_funds_summary").execute().data
+    return summary or {"total_received": 0, "total_allocated": 0, "unallocated": 0}
+
+
+@app.get("/api/admin/allocations")
+def list_allocations(request: Request):
+    require_staff(request, ALLOCATION_ROLES)
+    client = database()
+    rows = (client.table("allocations")
+            .select("id,destination_type,destination_id,amount,note,created_at,allocated_by")
+            .order("created_at", desc=True)
+            .limit(500)
+            .execute().data) or []
+
+    # Resolve destination labels in one pass per type so the list is readable
+    # without the frontend issuing a query per row.
+    labels = {}
+    for dest_type, table in ALLOCATION_DESTINATIONS.items():
+        ids = list({r["destination_id"] for r in rows
+                    if r["destination_type"] == dest_type and r.get("destination_id")})
+        if not ids:
+            continue
+        title_column = "case_reference" if table == "beneficiaries" else "title"
+        try:
+            found = client.table(table).select(f"id,{title_column}").in_("id", ids).execute().data or []
+        except Exception:
+            found = []
+        for row in found:
+            labels[f"{dest_type}:{row['id']}"] = row.get(title_column) or "Unnamed"
+    for row in rows:
+        row["destination_label"] = labels.get(
+            f"{row['destination_type']}:{row.get('destination_id')}", "General foundation support"
+        )
+    return {"items": rows, "summary": client.rpc("foundation_funds_summary").execute().data}
+
+
+@app.post("/api/admin/allocations")
+def create_allocation(payload: AllocationRequest, request: Request):
+    user, _ = require_staff(request, ALLOCATION_ROLES)
+    client = database()
+    if payload.destination_type == "general":
+        destination_id = None
+    else:
+        destination_id = payload.destination_id
+        if not destination_id:
+            raise HTTPException(422, "Choose the programme, project or child case to allocate to.")
+        table = ALLOCATION_DESTINATIONS[payload.destination_type]
+        exists = client.table(table).select("id").eq("id", destination_id).maybe_single().execute().data
+        if not exists:
+            raise HTTPException(404, "That destination no longer exists.")
+    record = {
+        "destination_type": payload.destination_type,
+        "destination_id": destination_id,
+        "amount": float(payload.amount),
+        "note": payload.note,
+        "allocated_by": user.id,
+    }
+    try:
+        created = client.table("allocations").insert(record).execute().data
+    except Exception as exc:
+        # The database refuses an allocation that exceeds the unallocated
+        # balance; surface that as a clear 409 rather than a generic failure.
+        message = str(exc)
+        if "exceeds the unallocated balance" in message:
+            raise HTTPException(409, "That amount is more than the unallocated balance. Allocate less, or record the incoming donation first.") from exc
+        raise HTTPException(502, "The allocation could not be recorded. Please try again.") from exc
+    return {"ok": True, "allocation": (created or [None])[0], "summary": client.rpc("foundation_funds_summary").execute().data}
+
+
+@app.delete("/api/admin/allocations/{allocation_id}")
+def delete_allocation(allocation_id: str, request: Request):
+    require_staff(request, ("super_admin", "admin"))
+    client = database()
+    try:
+        uuid.UUID(allocation_id)
+    except ValueError:
+        raise HTTPException(404, "Allocation not found.")
+    existing = client.table("allocations").select("id").eq("id", allocation_id).maybe_single().execute().data
+    if not existing:
+        raise HTTPException(404, "Allocation not found.")
+    client.table("allocations").delete().eq("id", allocation_id).execute()
+    return {"ok": True, "summary": client.rpc("foundation_funds_summary").execute().data}
+
+
+# ---------------------------------------------------------------------------
+# Reports
+# ---------------------------------------------------------------------------
+
+@app.get("/api/admin/reports/summary")
+def reports_summary(request: Request, start: Optional[str] = None, end: Optional[str] = None):
+    require_staff(request, ALLOCATION_ROLES)
+    client = database()
+
+    def in_range(query):
+        if start:
+            query = query.gte("created_at", start)
+        if end:
+            query = query.lte("created_at", end)
+        return query
+
+    donations = in_range(
+        client.table("donations").select("amount,status,programme_id,beneficiary_id,created_at")
+    ).limit(5000).execute().data or []
+    allocations = in_range(
+        client.table("allocations").select("amount,destination_type,destination_id,created_at")
+    ).limit(5000).execute().data or []
+
+    paid = [d for d in donations if d.get("status") == "paid"]
+    received = sum(float(d["amount"] or 0) for d in paid)
+    allocated = sum(float(a["amount"] or 0) for a in allocations)
+
+    by_destination = {}
+    for row in allocations:
+        key = row["destination_type"]
+        by_destination[key] = by_destination.get(key, 0) + float(row["amount"] or 0)
+
+    return {
+        "range": {"start": start, "end": end},
+        "donations": {
+            "count": len(paid),
+            "received": received,
+            "pending": len([d for d in donations if d.get("status") == "pending"]),
+            "programme_directed": sum(float(d["amount"] or 0) for d in paid if d.get("programme_id")),
+            "case_directed": sum(float(d["amount"] or 0) for d in paid if d.get("beneficiary_id")),
+            "general": sum(float(d["amount"] or 0) for d in paid if not d.get("programme_id") and not d.get("beneficiary_id")),
+        },
+        "allocations": {
+            "count": len(allocations),
+            "allocated": allocated,
+            "unallocated": received - allocated,
+            "by_destination": by_destination,
+        },
+    }

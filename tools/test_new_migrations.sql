@@ -31,18 +31,24 @@ begin
 
   -- 1. images: byte cap and mime allow-list are enforced.
   begin
-    insert into public.images(mime_type, byte_size, data) values ('image/gif', 100, '\x00');
+    insert into public.images(mime_type, byte_size, data) values ('image/gif', 100, 'AAAA');
     raise exception 'FAIL: unsupported mime type was accepted';
   exception when check_violation then null;
   end;
   begin
-    insert into public.images(mime_type, byte_size, data) values ('image/png', 3000000, '\x00');
+    insert into public.images(mime_type, byte_size, data) values ('image/png', 3000000, 'AAAA');
     raise exception 'FAIL: image above 2MB was accepted';
   exception when check_violation then null;
   end;
+  -- data length must be consistent with byte_size, so a truncated payload is caught.
+  begin
+    insert into public.images(mime_type, byte_size, data) values ('image/png', 2000, 'AAAA');
+    raise exception 'FAIL: base64 payload inconsistent with byte_size was accepted';
+  exception when check_violation then null;
+  end;
   insert into public.images(mime_type, byte_size, data, is_public, uploaded_by)
-    values ('image/png', 10, '\x89504e470d0a1a0a', true, admin_id) returning id into img_id;
-  raise notice 'PASS: images table enforces mime and size, insert works';
+    values ('image/png', 8, 'iVBORw0KGgo=', true, admin_id) returning id into img_id;
+  raise notice 'PASS: images table enforces mime, size and payload length';
 
   -- 2. A case cannot be published without guardian consent.
   begin

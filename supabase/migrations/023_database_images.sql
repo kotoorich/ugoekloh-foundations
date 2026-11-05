@@ -8,17 +8,24 @@
 -- The browser never reads this table directly. Public images are served by the
 -- backend at /api/images/<id>, which checks `is_public` before returning bytes.
 -- That keeps the anon key from being able to bulk-download the image table.
+--
+-- Image bytes are held as base64 text rather than bytea. PostgREST returns bytea
+-- in a hex form that supabase-py surfaces inconsistently; base64 round-trips
+-- exactly, which matters more here than the ~33% storage overhead.
 create table if not exists public.images (
   id uuid primary key default gen_random_uuid(),
   mime_type text not null check (mime_type in (
     'image/jpeg','image/png','image/webp','image/avif','image/svg+xml'
   )),
   byte_size integer not null check (byte_size > 0 and byte_size <= 2097152),
-  data bytea not null,
+  data text not null,
   is_public boolean not null default false,
   alt_text text,
   uploaded_by uuid references auth.users(id),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- base64 encodes 3 bytes into 4 characters, so the payload length is fully
+  -- determined by byte_size. An exact check catches a truncated or padded blob.
+  constraint images_data_length_check check (length(data) = ((byte_size + 2) / 3) * 4)
 );
 
 create index if not exists images_public_idx on public.images(is_public, created_at desc);
