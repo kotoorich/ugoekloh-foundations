@@ -19,7 +19,7 @@ import NewsletterManager from './panels/NewsletterManager';
 import AuditTrail from './panels/AuditTrail';
 
 function BrandMark({ size = 34 }) {
-  return <img className="admin-logo" src="/logo.svg" alt="" width={size} height={size} aria-hidden="true" />;
+  return <img className="admin-logo" src="/logo.png" alt="" width={size} height={size} aria-hidden="true" />;
 }
 
 /* ------------------------------------------------------------- sign in --- */
@@ -387,7 +387,7 @@ function AccountPanel() {
 }
 
 export default function AdminApp() {
-  const { loading, isSignedIn, canAccessAdmin, profile } = useAuth();
+  const { loading, isSignedIn, canAccessAdmin, accessState, profile, signOut, email } = useAuth();
 
   if (!isConfigured) {
     return (
@@ -407,6 +407,33 @@ export default function AdminApp() {
     );
   }
 
+  // A signed-in account that is not active staff must still be able to reach the
+  // sign-in form. Without the Sign out action below, a session belonging to a
+  // non-staff or deactivated account kept redirecting here, so /admin was a dead
+  // end: the sign-in form was unreachable and the only way back was to clear
+  // browser storage by hand.
+  const blocked = {
+    inactive: {
+      heading: 'This staff account is switched off',
+      body: 'Your account exists but is not active. An administrator can reactivate it from Staff accounts.',
+    },
+    'no-profile': {
+      heading: 'No staff profile is linked to this sign-in',
+      body: 'You signed in successfully, but no staff record is linked to this account. An administrator needs to create one for you in Staff accounts.',
+    },
+    unauthorized: {
+      heading: 'Your session has expired',
+      body: 'Sign in again to continue.',
+    },
+    error: {
+      heading: 'Your access could not be checked',
+      body: 'The foundation API did not answer. If this is a new deployment, wait a moment and try again; otherwise check that VITE_API_URL points at the running API.',
+    },
+  }[accessState] || {
+    heading: 'Access unavailable',
+    body: 'Your staff account is inactive or has no assigned role. Ask a super administrator to review it.',
+  };
+
   return (
     <ToastProvider>
       <Routes>
@@ -417,8 +444,13 @@ export default function AdminApp() {
             !isSignedIn ? <Navigate to="/admin/sign-in" replace />
               : !canAccessAdmin ? (
                 <div className="admin-boot">
-                  <h2>Access unavailable</h2>
-                  <p>Your staff account is inactive or has no assigned role. Ask a super administrator to review it.</p>
+                  <h2>{blocked.heading}</h2>
+                  <p>{blocked.body}</p>
+                  {email && <p className="admin-boot-account">Signed in as <strong>{email}</strong></p>}
+                  <div className="admin-boot-actions">
+                    <button type="button" className="button" onClick={signOut}>Sign out and try another account</button>
+                    <button type="button" className="button button-outline" onClick={() => window.location.reload()}>Try again</button>
+                  </div>
                 </div>
               )
               : profile?.must_change_password ? <PasswordGate />

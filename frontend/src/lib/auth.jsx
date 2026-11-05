@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { supabase, isConfigured, apiUrl } from './supabase';
+import { supabase, apiUrl } from './supabase';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -17,8 +16,13 @@ export const useAuth = () => useContext(AuthContext);
  * off, and a staff account that is fine.
  */
 async function fetchStaffProfile(activeSession) {
+  // Without a deadline an unreachable API leaves the admin area stuck on
+  // "Checking your access…" until the browser's own multi-minute timeout.
   const response = await fetch(`${apiUrl}/api/me`, {
     headers: { Authorization: `Bearer ${activeSession.access_token}` },
+    signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+      ? AbortSignal.timeout(8000)
+      : undefined,
   });
   if (response.status === 401) return { status: 'unauthorized' };
   if (!response.ok) return { status: 'error' };
@@ -53,14 +57,24 @@ export function AuthProvider({ children }) {
       result = { status: 'error' };
     }
     // Fall back to reading the profile directly if the API could not answer,
-    // so a deployment running an older backend still lets staff in.
+    // so a deployment running an older backend still lets staff in. This read
+    // also gets a deadline: an unreachable Supabase must not leave the admin
+    // area spinning on "Checking your access…" forever.
     if (result.status === 'error') {
-      const { data, error } = await supabase
-        .from('staff_profiles')
-        .select('user_id,full_name,role,is_active,must_change_password')
-        .eq('user_id', activeSession.user.id)
-        .maybeSingle();
-      if (!error) result = { status: data ? (data.is_active ? 'ok' : 'inactive') : 'no-profile', profile: data };
+      try {
+        let query = supabase
+          .from('staff_profiles')
+          .select('user_id,full_name,role,is_active,must_change_password')
+          .eq('user_id', activeSession.user.id)
+          .maybeSingle();
+        if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+          query = query.abortSignal(AbortSignal.timeout(8000));
+        }
+        const { data, error } = await query;
+        if (!error) result = { status: data ? (data.is_active ? 'ok' : 'inactive') : 'no-profile', profile: data };
+      } catch {
+        result = { status: 'error' };
+      }
     }
     setProfile(result.profile || null);
     setAccessState(result.status);
@@ -70,21 +84,45 @@ export function AuthProvider({ children }) {
     if (!supabase) { setLoading(false); return undefined; }
     let active = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      await loadProfile(data.session);
+    // `loading` gates the whole admin area. Every path out of this effect must
+    // clear it, otherwise a rejected or stalled session lookup strands the user
+    // on the boot screen with no way forward. `getSession()` can stall when the
+    // auth client waits on a browser lock, so a watchdog clears the gate too.
+    const watchdog = setTimeout(() => {
       if (active) setLoading(false);
-    });
+    }, 8000);
+
+    supabase.auth.getSession()
+      .then(async ({ data }) => {
+        if (!active) return;
+        setSession(data.session);
+        await loadProfile(data.session);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSession(null);
+        setProfile(null);
+        setAccessState('error');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!active) return;
       setSession(nextSession);
-      await loadProfile(nextSession);
-      setLoading(false);
+      try {
+        await loadProfile(nextSession);
+      } finally {
+        if (active) setLoading(false);
+      }
     });
 
-    return () => { active = false; subscription.unsubscribe(); };
+    return () => {
+      active = false;
+      clearTimeout(watchdog);
+      subscription.unsubscribe();
+    };
   }, [loadProfile]);
 
   const signOut = useCallback(async () => {
@@ -114,75 +152,4 @@ export function AuthProvider({ children }) {
   }), [session, profile, loading, accessState, signOut, refreshProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-/**
- * Guard for the admin area.
- *
- * Replaces the old window.confirm-on-popstate trick, which did not actually
- * stop the browser Back button from re-entering the dashboard.
- */
-export function RequireStaff({ children }) {
-  const { loading, isSignedIn, canAccessAdmin, accessState, signOut, email } = useAuth();
-  const location = useLocation();
-
-  if (!isConfigured) return children;
-  if (loading) {
-    return (
-      <div className="admin-boot" role="status">
-        <span className="admin-boot-spinner" aria-hidden="true" />
-        <p>Checking your access…</p>
-      </div>
-    );
-  }
-  if (!isSignedIn || accessState === 'unauthorized') {
-    return <Navigate to="/admin/sign-in" replace state={{ from: location.pathname }} />;
-  }
-  if (!canAccessAdmin) {
-    // Say which of the three problems this actually is. The old message covered
-    // both cases at once, which made a fixable database problem look like a
-    // deactivated account.
-    const messages = {
-      inactive: {
-        heading: 'This staff account is switched off',
-        body: 'Your account exists but is not active. An administrator can reactivate it from Staff accounts.',
-      },
-      'no-profile': {
-        heading: 'No staff profile is linked to this sign-in',
-        body: 'You signed in successfully, but no staff record is linked to this account. An administrator needs to create one for you in Staff accounts.',
-      },
-      error: {
-        heading: 'Your access could not be checked',
-        body: 'The foundation API did not answer. If this is a new deployment, wait a moment and reload; otherwise check that the API address is correct.',
-      },
-    };
-    const message = messages[accessState] || messages.error;
-    return (
-      <div className="admin-boot">
-        <h2>{message.heading}</h2>
-        <p>{message.body}</p>
-        {email && <p className="admin-boot-account">Signed in as <strong>{email}</strong></p>}
-        <div className="admin-boot-actions">
-          <button type="button" className="button button-outline" onClick={() => window.location.reload()}>Try again</button>
-          <button type="button" className="button button-outline" onClick={signOut}>Sign out</button>
-        </div>
-      </div>
-    );
-  }
-  return children;
-}
-
-/** Redirect a signed-in staff member away from the sign-in page. */
-export function RedirectIfSignedIn({ children }) {
-  const { loading, isSignedIn, canAccessAdmin } = useAuth();
-  if (loading) {
-    return (
-      <div className="admin-boot" role="status">
-        <span className="admin-boot-spinner" aria-hidden="true" />
-        <p>Checking your access…</p>
-      </div>
-    );
-  }
-  if (isSignedIn && canAccessAdmin) return <Navigate to="/admin" replace />;
-  return children;
 }

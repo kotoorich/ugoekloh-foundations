@@ -897,7 +897,7 @@ The default foundation imagery that ships with the project lives in the database
 
 ### Replacing the sample logo
 
-A sample logo is provided at `frontend/public/logo.svg` and is used wherever no logo has been uploaded. To use the foundation's own logo, open **Foundation settings**, upload it under **Logo**, and save. It then appears in the website header, the footer and the admin portal. The sample file can be left in place as a fallback.
+A sample logo is provided at `frontend/public/logo.png` and is used wherever no logo has been uploaded. To use the foundation's own logo, open **Foundation settings**, upload it under **Logo**, and save. It then appears in the website header, the footer and the admin portal. The sample file can be left in place as a fallback. The browser tab icon uses `frontend/public/favicon-32.png` and `favicon-16.png`, and iOS home-screen saves use `apple-touch-icon.png`; all three are PNG and are built from the same mark.
 
 ## 35. Child cases, donations and allocations
 
