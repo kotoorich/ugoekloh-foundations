@@ -354,16 +354,29 @@ def public_events():
     items=db.table("events").select("id,title,description,venue,starts_at,ends_at").eq("status","published").order("starts_at").limit(50).execute().data
     return {"items":items or []}
 
+# Branding and contact fields shown on the public site. Kept as one list so a
+# deployment whose database predates a column degrades to the older field set
+# instead of failing the whole request.
+PUBLIC_SETTINGS_FIELDS = (
+    "foundation_name,contact_email,contact_phone,call_line,address,"
+    "default_currency,logo_path,tagline,about_summary,"
+    "facebook_url,instagram_url,x_url,linkedin_url"
+)
+PUBLIC_SETTINGS_FALLBACK = "foundation_name,contact_email,contact_phone,call_line,address,default_currency"
+
+
 @app.get("/api/public/settings")
 def public_settings():
     if not db:return {}
-    try:
-        result=db.table("foundation_settings").select("foundation_name,contact_email,contact_phone,call_line,address,default_currency").eq("id",1).maybe_single().execute()
-        return (result.data or {}) if result is not None else {}
-    except Exception:
-        # Public contact settings are optional; never let an empty settings
-        # table break the public site footer or settings endpoint.
-        return {}
+    for fields in (PUBLIC_SETTINGS_FIELDS, PUBLIC_SETTINGS_FALLBACK):
+        try:
+            result=db.table("foundation_settings").select(fields).eq("id",1).maybe_single().execute()
+            return (result.data or {}) if result is not None else {}
+        except Exception:
+            # Public contact settings are optional; never let an empty settings
+            # table break the public site footer or settings endpoint.
+            continue
+    return {}
 
 @app.post("/api/public/newsletter")
 async def newsletter(payload: NewsletterRequest):

@@ -8,8 +8,9 @@ A full-stack foundation website for publishing approved updates, receiving donat
 
 - Public website: Home, About, Programmes, Stories, News, Events, Gallery, Impact Reports, FAQs, Policies and Contact.
 - Get involved: Volunteer applications, partnership enquiries and newsletter subscriptions.
-- Donations: Paystack checkout, server-side verification, one destination per gift (general foundation support or one programme), Paystack online checkout, verified payment tracking and downloadable receipts.
-- Admin workspace: Guided content editing, direct image uploads with previews, donation ledger with destination labels, Paystack refund tracking, enquiries, staff accounts, foundation settings and operational overview counts.
+- Donations: Paystack checkout, server-side verification, one destination per gift (general foundation support, one programme, or one consented child case), verified payment tracking and downloadable receipts.
+- Fund management: An internal allocation ledger that records where received money was directed, with a running available balance, and a financial report by date range that keeps received and allocated separate.
+- Admin workspace: A rebuilt dashboard with one section per task, an operator guide in every section, guided content editing, image uploads with previews and automatic resizing, a donation ledger with destination labels, Paystack refund tracking, enquiries, staff accounts, foundation settings and reporting.
 - Email delivery: Admin-controlled ON/OFF mode, manual Gmail API primary / SendPulse alternative selection, test email, branded templates and delivery activity logs.
 - Child case management: Guardian consent records, case-worker assignment and private case-document uploads.
 - Supabase database, authentication, row-level security and separate public/private storage buckets.
@@ -546,6 +547,8 @@ Only publish a target that the foundation has approved and can explain to donors
 
 Child cases contain confidential guardian and child information. They are for authorised case staff, not a public directory.
 
+A case is private unless an administrator deliberately publishes it. Publication requires recorded consent to collect, recorded consent to publish with a consent reference, and the public visibility switch turned on. When a case is published, only the public display name, the public story written for donors, the support need, the funding figures and the case image are served publicly. Guardian details, medical notes, internal references and case documents are never published. See section 35 for the full explanation.
+
 ### A. Before registration
 
 Confirm that the foundation is authorised to collect the information. Explain the purpose and handling of the data to the guardian. Record consent to collect information separately from consent to publish a story or photograph. Use a non-identifying case reference and collect only information needed to assess and coordinate support.
@@ -631,7 +634,9 @@ Open **Donations** only if your role permits it. The ledger shows donor and tran
 - **Export CSV** is for authorised reconciliation and reporting only.
 - Keep donor details and exports confidential.
 
-A donor chooses general foundation support or one published programme. Programme donations remain associated with that programme; general donations do not count toward any programme goal. Never mark a payment as paid just because a donor sends a screenshot. The application does not replace accounting records, bank reconciliation or independent refund approval.
+A donor chooses general foundation support, one published programme, or one published child case. Programme donations remain associated with that programme; general donations do not count toward any programme goal. Never mark a payment as paid just because a donor sends a screenshot. The application does not replace accounting records, bank reconciliation or independent refund approval.
+
+Received money is directed using **Allocations**, which keeps a running available balance and refuses an allocation that would exceed it. **Reports** summarises received, allocated and unallocated amounts for any date range. Received and allocated are shown separately on purpose; combining them would overstate income. See section 35 for how donations, allocations and case funding entries differ.
 
 ## 26. Enquiries, volunteers, partnerships and newsletter
 
@@ -762,7 +767,7 @@ The call-line field is added by migration `013_public_contact_and_content_images
 
 ### Images on public pages
 
-Administrators can attach images to programmes, projects, news, events, partner profiles, gallery entries and impact reports. Use the image preview in the editor to confirm the correct image before saving. Gallery images remain hidden from the public until they are published and guardian consent is verified. Never upload or publish identifiable child photographs without appropriate guardian consent and safeguarding approval.
+Administrators can attach images to programmes, news, events, partner profiles, gallery entries, impact reports, child cases and the foundation logo. Uploaded photographs are resized automatically before they are stored; see section 34 for where each kind of image is kept. Use the image preview in the editor to confirm the correct image before saving. Gallery images remain hidden from the public until they are published and guardian consent is verified. Never upload or publish identifiable child photographs without appropriate guardian consent and safeguarding approval.
 
 
 ---
@@ -862,3 +867,97 @@ The email settings row and delivery log are created by migration `014_email_deli
 - Donor confirmation after Paystack payment verification.
 
 Case assignment alerts, staff invitation/password emails, full newsletter campaign composition, unsubscribe links, scheduled campaigns, retries and automatic provider failover remain follow-up implementation work. Do not assume those workflows are active until separately implemented and tested.
+
+## 34. Images: database and bucket storage
+
+The platform stores images in two places on purpose. Both are addressed through the same `image_path` column, and the frontend resolves either kind automatically, so an editor never has to choose.
+
+| Reference | Stored in | Used for | Served by |
+|---|---|---|---|
+| `db:<uuid>` | The `images` table in the database | Small, fixed imagery: logos, programme covers, small illustrations | `GET /api/images/<uuid>` on the backend |
+| `2026-01-14/<uuid>.jpg` | The `foundation-media` storage bucket | Anything larger, especially photographs uploaded from a phone | Supabase storage public URL |
+
+### How the choice is made
+
+1. The editor chooses a file in any image field.
+2. The browser resizes it to a maximum of 1600 pixels on the long edge and re-encodes it, which keeps a typical phone photograph well under 400 KB.
+3. If the result is under roughly 400 KB it is stored in the database; anything larger goes to the bucket.
+4. The returned reference is written into the same field either way.
+
+### Default images and later uploads
+
+The default foundation imagery that ships with the project lives in the database. Anything you upload later through the dashboard goes to the `foundation-media` bucket, unless it is small enough to be kept in the database. This is deliberate: default images must exist without any storage configuration, while uploaded media is better held outside the database.
+
+### Rules enforced on upload
+
+- Accepted types are JPEG, PNG, WebP, AVIF and SVG.
+- Images must be 2 MB or smaller after the browser has resized them.
+- SVG is markup rather than a picture, so an uploaded SVG containing script, an event handler or an embedded frame is refused. A stored SVG is served from the foundation's own address, so this is a real safeguard, not a formality.
+- Images marked private can only be read by a signed-in staff member.
+
+### Replacing the sample logo
+
+A sample logo is provided at `frontend/public/logo.svg` and is used wherever no logo has been uploaded. To use the foundation's own logo, open **Foundation settings**, upload it under **Logo**, and save. It then appears in the website header, the footer and the admin portal. The sample file can be left in place as a fallback.
+
+## 35. Child cases, donations and allocations
+
+This section explains the two questions that come up most often: where child cases live, and how money is recorded against them.
+
+### Where child cases live
+
+A child case is a confidential record in the `beneficiaries` table. It is **not** part of the public website by default, and nothing about it is published unless an administrator deliberately publishes it.
+
+To be shown publicly, a case must satisfy **all** of the following:
+
+1. **Consent to collect** is recorded. This is required before a case can even be saved.
+2. **Consent to publish** is recorded, with a consent reference. A case cannot be published without it, and the database refuses the update if it is missing.
+3. An administrator switches **Show publicly** on for that case.
+
+Even then, the public site receives only a restricted set of fields through `GET /api/public/cases`:
+
+- the case reference
+- the public display name (never the child's name)
+- the public story, written separately for donors
+- the support need, target amount, amount raised and progress
+- the case image
+
+Guardian names, guardian contact details, medical notes, rehabilitation notes, internal references, assigned worker and case documents are never selected by that endpoint. They cannot leak through a mistake in the interface, because the endpoint never asks the database for them.
+
+### How money is recorded against a case
+
+Three separate things are recorded, and they are deliberately not the same thing:
+
+| Record | Table | What it means |
+|---|---|---|
+| A donation | `donations` | A donor gave money and named this case as the destination. Counts only once the payment is confirmed. |
+| An allocation | `allocations` | An administrator decided that money already received should be directed to this case. This does not move money; it records a decision. |
+| A case funding entry | `case_funding` | What the foundation contributed to, or spent on, this case. |
+
+The distinction matters:
+
+- **Donations** answer "who gave, and what did they choose to support?".
+- **Allocations** answer "where did we decide the money should go?". An allocation is refused if it would exceed the unallocated balance.
+- **Case funding entries** answer "what was actually contributed or spent on this child?".
+
+A programme's or a case's fundraising total is driven only by confirmed donations. Allocations never change a public fundraising total, which is why the two are kept apart.
+
+### Allocating money, step by step
+
+1. A donation is confirmed as paid, which increases the foundation's received total.
+2. Open **Allocations**. The available balance is received money minus everything already allocated.
+3. Choose the destination: a programme, a project, a child case, or general support.
+4. Enter the amount and a short reason.
+5. The amount is deducted from the available balance immediately and the decision is written to the audit trail.
+
+Reversing an allocation returns the money to the available balance. Only administrators can reverse one.
+
+### Reporting
+
+**Reports** shows, for any date range:
+
+- money received from confirmed donations
+- how much of that was directed by donors to programmes, to child cases, or left general
+- how much has been allocated internally, and by destination
+- what remains unallocated
+
+Received and allocated are reported separately. Adding them together would overstate the foundation's income.

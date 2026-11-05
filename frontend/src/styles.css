@@ -241,3 +241,70 @@
  .case-files{align-items:flex-start;flex-direction:column}
  .workspace-heading{align-items:flex-start;flex-direction:column}
 }
+
+/* ==========================================================================
+   Donation destination cards
+   ========================================================================== */
+
+.destination-picker { display: flex; flex-direction: column; gap: 12px; }
+.destination-picker h3 { margin: 0; font-size: 1rem; }
+.destination-picker-note {
+  display: flex; gap: 8px; align-items: flex-start; margin: 0;
+  background: #f2f7f3; border-left: 3px solid var(--admin-accent, #c8963e);
+  border-radius: 0 9px 9px 0; padding: 10px 13px; font-size: 0.83rem; color: #37503f;
+}
+.destination-picker-note svg { flex: 0 0 auto; margin-top: 2px; }
+
+.destination-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 13px; }
+
+.destination-card {
+  display: flex; flex-direction: column; text-align: left; gap: 0; padding: 0;
+  background: #fff; border: 1.5px solid #dfe6e0; border-radius: 13px; overflow: hidden;
+  cursor: pointer; font: inherit; color: inherit; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.destination-card:hover { border-color: #b9cfc2; transform: translateY(-2px); }
+.destination-card.selected { border-color: #0e3a29; box-shadow: 0 0 0 3px rgba(14,58,41,0.12); }
+
+.destination-card-image { position: relative; display: block; aspect-ratio: 16 / 9; background: #eef2ef; }
+.destination-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.destination-card-placeholder { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; color: #9bb0a4; background: linear-gradient(140deg, #eef4f0, #e3ece6); }
+.destination-card-tick {
+  position: absolute; top: 9px; right: 9px; width: 26px; height: 26px; border-radius: 50%;
+  background: #0e3a29; color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.85rem; font-weight: 700;
+}
+.destination-card-flag {
+  position: absolute; top: 9px; left: 9px; background: #a5342c; color: #fff;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px;
+}
+
+.destination-card-body { display: flex; flex-direction: column; gap: 5px; padding: 13px 14px 15px; }
+.destination-card-body strong { font-size: 0.94rem; line-height: 1.3; }
+.destination-card-category { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: #6b7d73; }
+.destination-card-text { font-size: 0.83rem; color: #55655c; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+.destination-card-progress { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
+.destination-card-progress-track { display: block; height: 7px; border-radius: 999px; background: #e8ede9; overflow: hidden; }
+.destination-card-progress-track > span { display: block; height: 100%; background: linear-gradient(90deg, #16523a, #c8963e); border-radius: 999px; }
+.destination-card-progress-text { font-size: 0.76rem; color: #6b7d73; }
+
+.donation-selection-summary {
+  display: flex; gap: 9px; align-items: flex-start;
+  background: #f2f7f3; border: 1px solid #dbe7de; border-radius: 11px;
+  padding: 12px 14px; font-size: 0.85rem; color: #37503f;
+}
+.donation-selection-summary svg { flex: 0 0 auto; margin-top: 2px; color: #1c7a4f; }
+.donation-amount-label { font-weight: 600; font-size: 0.88rem; }
+
+/* Brand logo ------------------------------------------------------------- */
+
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #eaf2ed;
+  flex: 0 0 auto;
+}
+.footer .brand-logo { background: #16402f; }
