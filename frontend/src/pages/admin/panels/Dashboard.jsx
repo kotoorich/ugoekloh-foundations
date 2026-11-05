@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Banknote, HeartPulse, PiggyBank, Users } from 'lucide-react';
+import { Banknote, HeartPulse, MessageSquare, PiggyBank, Users } from 'lucide-react';
 import { apiFetch, supabase, money, shortDate } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
 import { GuidePanel, PageHeader, ProgressBar, Spinner, StatCard } from '../../../components/AdminUI';
@@ -110,6 +110,7 @@ export default function Dashboard() {
             )}
             {canSee('programmes') && <StatCard icon={Users} label="Published programmes" value={counts.programmes} hint="Visible to donors" />}
             {canSee('beneficiaries') && <StatCard icon={HeartPulse} label="Active child cases" value={counts.cases} hint="Confidential records" />}
+            {canSee('inbox') && <StatCard icon={MessageSquare} label="New enquiries" value={counts.enquiries} hint="Messages awaiting a reply" />}
           </section>
 
           <div className="dashboard-columns">

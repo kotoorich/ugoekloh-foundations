@@ -38,6 +38,7 @@ drop policy if exists "Case workers read beneficiaries" on public.beneficiaries;
 create policy "Case workers read beneficiaries" on public.beneficiaries for select to authenticated
 using (public.has_role(array['super_admin','admin']) or (public.has_role(array['case_worker']) and assigned_to=auth.uid()));
 drop policy if exists "Case workers manage beneficiaries" on public.beneficiaries;
+drop policy if exists "Case staff update assigned beneficiaries" on public.beneficiaries;
 create policy "Case staff update assigned beneficiaries" on public.beneficiaries for update to authenticated
 using (public.has_role(array['super_admin','admin']) or (public.has_role(array['case_worker']) and assigned_to=auth.uid()))
 with check (public.has_role(array['super_admin','admin']) or (public.has_role(array['case_worker']) and assigned_to=auth.uid()));

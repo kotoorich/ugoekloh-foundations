@@ -143,6 +143,22 @@ function PasswordGate() {
 
 /* --------------------------------------------------------------- shell --- */
 
+function NoAccess({ section, role }) {
+  return (
+    <div className="admin-panel">
+      <div className="admin-empty">
+        <span className="admin-empty-icon"><ShieldCheck size={26} aria-hidden="true" /></span>
+        <h3>You do not have access to {section}</h3>
+        <p>
+          Your role is {ROLE_LABELS[role] || role}. Ask a super administrator to
+          grant access if you need to work in this area.
+        </p>
+        <Link className="button" to="/admin">Back to dashboard</Link>
+      </div>
+    </div>
+  );
+}
+
 function Shell() {
   const { profile, role, signOut } = useAuth();
   const toast = useToast();
@@ -157,13 +173,41 @@ function Shell() {
     : 'dashboard';
   const activeSection = SECTIONS[sectionKey];
 
+  // The sidebar only lists sections a role may use, but nothing stopped someone
+  // typing an admin-only URL. Resolve the section against the role's own
+  // navigation and show a clear refusal instead of rendering a screen the
+  // database would reject anyway.
+  const guarded = (key, element) => {
+    const allowed = navigation.some(([navKey]) => navKey === key);
+    return allowed ? element : <NoAccess section={SECTIONS[key]?.label || key} role={role} />;
+  };
+
   useEffect(() => { setDrawerOpen(false); setMenuOpen(false); }, [sectionKey]);
 
   useEffect(() => {
     if (sectionParam && sectionParam !== sectionKey) navigate('/admin', { replace: true });
   }, [sectionParam, sectionKey, navigate]);
 
-  const pendingCount = 0;
+  // Count of unanswered enquiries, shown as a badge on the topbar bell. Staff
+  // without inbox access see no badge rather than a misleading zero.
+  const [pendingCount, setPendingCount] = useState(0);
+  const canSeeInbox = navigation.some(([key]) => key === 'inbox');
+
+  useEffect(() => {
+    if (!canSeeInbox || !supabase) return undefined;
+    let active = true;
+    async function countPending() {
+      const open = ['new', 'unread', 'pending', 'in_review', 'submitted'];
+      const tables = ['contact_messages', 'volunteer_applications', 'partnership_applications'];
+      const results = await Promise.all(tables.map((table) =>
+        supabase.from(table).select('id', { count: 'exact', head: true }).in('status', open)));
+      if (!active) return;
+      setPendingCount(results.reduce((sum, result) => sum + (result.count || 0), 0));
+    }
+    countPending();
+    const timer = setInterval(countPending, 60000);
+    return () => { active = false; clearInterval(timer); };
+  }, [canSeeInbox, sectionKey]);
 
   async function handleSignOut() {
     await signOut();
@@ -220,16 +264,18 @@ function Shell() {
             <h1>{activeSection?.label || 'Dashboard'}</h1>
           </div>
           <div className="admin-topbar-tools">
-            <button
-              type="button"
-              className="admin-icon-button"
-              onClick={() => navigate('/admin/inbox')}
-              aria-label="Open enquiries"
-              title="Open enquiries"
-            >
-              <Bell size={18} />
-              {pendingCount > 0 && <span className="admin-dot" aria-hidden="true" />}
-            </button>
+            {canSeeInbox && (
+              <button
+                type="button"
+                className="admin-icon-button"
+                onClick={() => navigate('/admin/inbox')}
+                aria-label={pendingCount > 0 ? `Open enquiries, ${pendingCount} awaiting a reply` : 'Open enquiries'}
+                title={pendingCount > 0 ? `${pendingCount} enquiries awaiting a reply` : 'Open enquiries'}
+              >
+                <Bell size={18} />
+                {pendingCount > 0 && <span className="admin-dot" aria-hidden="true" />}
+              </button>
+            )}
             <div className="admin-account">
               <button type="button" className="admin-account-button" onClick={() => setMenuOpen((v) => !v)} aria-expanded={menuOpen} aria-haspopup="menu">
                 <span className="admin-avatar" aria-hidden="true">
@@ -260,24 +306,24 @@ function Shell() {
           <Routes>
             <Route index element={<Dashboard />} />
             <Route path="account" element={<AccountPanel />} />
-            <Route path="programmes" element={<ContentPanel sectionKey="programmes" />} />
-            <Route path="news" element={<ContentPanel sectionKey="news" />} />
-            <Route path="events" element={<ContentPanel sectionKey="events" />} />
-            <Route path="partners" element={<ContentPanel sectionKey="partners" />} />
-            <Route path="faqs" element={<ContentPanel sectionKey="faqs" />} />
-            <Route path="gallery" element={<ContentPanel sectionKey="gallery" />} />
-            <Route path="impact_reports" element={<ContentPanel sectionKey="impact_reports" />} />
-            <Route path="site_pages" element={<ContentPanel sectionKey="site_pages" />} />
-            <Route path="donations" element={<DonationLedger />} />
-            <Route path="allocations" element={<Allocations />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="beneficiaries" element={<CaseManager />} />
-            <Route path="staff_profiles" element={<StaffManager />} />
-            <Route path="inbox" element={<Inbox />} />
-            <Route path="newsletter" element={<NewsletterManager />} />
-            <Route path="audit_logs" element={<AuditTrail />} />
-            <Route path="settings" element={<FoundationSettings />} />
-            <Route path="email_settings" element={<EmailDelivery />} />
+            <Route path="programmes" element={guarded('programmes', <ContentPanel sectionKey="programmes" />)} />
+            <Route path="news" element={guarded('news', <ContentPanel sectionKey="news" />)} />
+            <Route path="events" element={guarded('events', <ContentPanel sectionKey="events" />)} />
+            <Route path="partners" element={guarded('partners', <ContentPanel sectionKey="partners" />)} />
+            <Route path="faqs" element={guarded('faqs', <ContentPanel sectionKey="faqs" />)} />
+            <Route path="gallery" element={guarded('gallery', <ContentPanel sectionKey="gallery" />)} />
+            <Route path="impact_reports" element={guarded('impact_reports', <ContentPanel sectionKey="impact_reports" />)} />
+            <Route path="site_pages" element={guarded('site_pages', <ContentPanel sectionKey="site_pages" />)} />
+            <Route path="donations" element={guarded('donations', <DonationLedger />)} />
+            <Route path="allocations" element={guarded('allocations', <Allocations />)} />
+            <Route path="reports" element={guarded('reports', <Reports />)} />
+            <Route path="beneficiaries" element={guarded('beneficiaries', <CaseManager />)} />
+            <Route path="staff_profiles" element={guarded('staff_profiles', <StaffManager />)} />
+            <Route path="inbox" element={guarded('inbox', <Inbox />)} />
+            <Route path="newsletter" element={guarded('newsletter', <NewsletterManager />)} />
+            <Route path="audit_logs" element={guarded('audit_logs', <AuditTrail />)} />
+            <Route path="settings" element={guarded('settings', <FoundationSettings />)} />
+            <Route path="email_settings" element={guarded('email_settings', <EmailDelivery />)} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
         </main>

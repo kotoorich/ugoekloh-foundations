@@ -176,3 +176,98 @@ class TestRouteRegistration:
             for r in main.app.routes
         )
         assert found, f"{method} {path} is missing"
+
+
+class _FakeUser:
+    def __init__(self, user_id="user-1", email="staff@example.org"):
+        self.id = user_id
+        self.email = email
+
+
+class _FakeAuth:
+    def __init__(self, user):
+        self._user = user
+
+    def get_user(self, _token):
+        return type("R", (), {"user": self._user})()
+
+
+class _FakeTable:
+    def __init__(self, row):
+        self._row = row
+
+    def select(self, *_a, **_k):
+        return self
+
+    def eq(self, *_a, **_k):
+        return self
+
+    def maybe_single(self):
+        return self
+
+    def execute(self):
+        return type("R", (), {"data": self._row})()
+
+
+class _FakeClient:
+    def __init__(self, user, profile):
+        self.auth = _FakeAuth(user)
+        self._profile = profile
+
+    def table(self, name):
+        assert name == "staff_profiles"
+        return _FakeTable(self._profile)
+
+
+class TestCurrentStaff:
+    """The /api/me contract the admin access guard depends on.
+
+    The three outcomes must stay distinguishable: an inactive staff account, a
+    sign-in with no staff profile, and a healthy account. Collapsing them is
+    what made the old guard claim an account was "inactive or has no role"
+    regardless of which it was.
+    """
+
+    def _call(self, monkeypatch, profile, user=_FakeUser()):
+        monkeypatch.setattr(main, "db", _FakeClient(user, profile))
+        request = type("Req", (), {"headers": {"authorization": "Bearer token"}})()
+        return main.current_staff(request)
+
+    def test_active_staff_is_reported_with_role(self, monkeypatch):
+        result = self._call(monkeypatch, {"role": "admin", "is_active": True, "full_name": "Ama"})
+        assert result["found"] is True
+        assert result["is_active"] is True
+        assert result["role"] == "admin"
+        assert result["full_name"] == "Ama"
+
+    def test_inactive_staff_is_found_but_not_active(self, monkeypatch):
+        result = self._call(monkeypatch, {"role": "editor", "is_active": False, "full_name": "Kofi"})
+        assert result["found"] is True
+        assert result["is_active"] is False
+        assert result["role"] == "editor"
+
+    def test_signed_in_user_without_a_staff_row_is_reported_as_not_found(self, monkeypatch):
+        result = self._call(monkeypatch, None)
+        assert result["found"] is False
+        assert result["is_active"] is False
+        assert result["role"] is None
+
+    def test_missing_token_is_rejected(self, monkeypatch):
+        monkeypatch.setattr(main, "db", _FakeClient(_FakeUser(), None))
+        request = type("Req", (), {"headers": {}})()
+        with pytest.raises(HTTPException) as err:
+            main.current_staff(request)
+        assert err.value.status_code == 401
+
+    def test_profile_without_optional_columns_still_resolves(self, monkeypatch):
+        # A database that predates must_change_password must not lock staff out.
+        result = self._call(monkeypatch, {"role": "finance", "is_active": True, "full_name": "Adjoa"})
+        assert result["found"] is True
+        assert result["must_change_password"] is False
+
+    def test_route_is_registered(self):
+        found = any(
+            getattr(r, "path", None) == "/api/me" and "GET" in getattr(r, "methods", set())
+            for r in main.app.routes
+        )
+        assert found, "GET /api/me is missing"
