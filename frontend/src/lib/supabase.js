@@ -116,6 +116,11 @@ export async function uploadImage(file, accessToken, { bucketUpload } = {}) {
 /**
  * Call a protected backend endpoint with the current session token.
  * Throws an Error carrying the server's message so callers can show it.
+ *
+ * A 401 means the Supabase session is no longer valid. Without a signal the
+ * caller just renders "The request could not be completed." and the operator is
+ * stuck on a dead screen, so the event is broadcast for the admin shell to act
+ * on and the message says what to do.
  */
 export async function apiFetch(path, accessToken, options = {}) {
   const response = await fetch(`${apiUrl}${path}`, {
@@ -128,7 +133,14 @@ export async function apiFetch(path, accessToken, options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(payload.detail || payload.message || 'The request could not be completed.');
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('foundation:session-expired'));
+    }
+    const error = new Error(
+      response.status === 401
+        ? 'Your session has expired. Sign in again to continue.'
+        : payload.detail || payload.message || 'The request could not be completed.'
+    );
     error.status = response.status;
     throw error;
   }

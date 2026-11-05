@@ -1,9 +1,10 @@
-import os, uuid, base64, binascii
+import os, uuid, base64, binascii, threading, time
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from supabase import create_client, Client
@@ -46,9 +47,47 @@ def database():
     if not db: raise HTTPException(503,"Database service is not configured.")
     return db
 
+# --- Public form abuse control -------------------------------------------
+# The unauthenticated write endpoints (contact, volunteer, newsletter,
+# partnership, donation start) were open to unlimited automated submissions.
+# A fixed-window counter per client address is deliberately simple: it needs no
+# extra dependency, survives a single-instance Render deployment, and its only
+# job is to stop a script filling the database and the mail quota. Counters live
+# in memory, so a multi-instance deployment would apply the limit per instance.
+_RATE_WINDOWS: dict = {}
+_RATE_LOCK = threading.Lock()
+RATE_LIMIT_WINDOW_SECONDS = 60
+
+def rate_limit(request: Request, bucket: str, limit: int) -> None:
+    """Reject the request with 429 once `limit` calls arrive in a minute.
+
+    Keyed by client address and bucket, so a burst against one form cannot lock
+    a donor out of another. Behind a proxy the first X-Forwarded-For entry is the
+    real client; Render sets this header.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "")
+    address = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
+    now = time.monotonic()
+    key = (address, bucket)
+    with _RATE_LOCK:
+        hits = [t for t in _RATE_WINDOWS.get(key, []) if now - t < RATE_LIMIT_WINDOW_SECONDS]
+        if len(hits) >= limit:
+            raise HTTPException(429, "Too many submissions from this connection. Please wait a minute and try again.")
+        hits.append(now)
+        _RATE_WINDOWS[key] = hits
+        # Keep the table from growing without bound on a long-lived instance.
+        if len(_RATE_WINDOWS) > 5000:
+            for stale in [k for k, v in _RATE_WINDOWS.items() if not v or now - max(v) >= RATE_LIMIT_WINDOW_SECONDS]:
+                _RATE_WINDOWS.pop(stale, None)
+
 # Populated by the startup hook so /api/health can report schema-setup problems
 # without the API ever refusing to boot because of them.
-STARTUP_STATE = {"database_ready": False, "database_error": None}
+#
+# `state` is deliberately three-valued. "starting" must stay a 200: Render polls
+# /api/health while the container comes up, and migrations legitimately take a
+# few seconds, so reporting failure during that window would restart-loop the
+# service. Only a settled "failed" is a real, actionable error.
+STARTUP_STATE = {"database_ready": False, "database_error": None, "state": "starting"}
 
 
 @app.on_event("startup")
@@ -65,22 +104,34 @@ def initialize_database_and_admin():
             setup_database()
             STARTUP_STATE["database_ready"] = True
             STARTUP_STATE["database_error"] = None
+            STARTUP_STATE["state"] = "ready"
         except Exception as exc:
             STARTUP_STATE["database_ready"] = False
             STARTUP_STATE["database_error"] = str(exc)
+            STARTUP_STATE["state"] = "failed"
             print(f"[database] Schema setup skipped: {exc}")
 
     threading.Thread(target=run, name="database-setup", daemon=True).start()
 
 @app.get("/api/health")
 def health():
-    return {
-        "status": "ok",
+    """Liveness and readiness in one endpoint.
+
+    Returns 503 only once setup has definitively failed, so that an uptime check
+    notices a database that never came up. Previously this always returned 200
+    with `status: ok`, which meant a deployment whose schema never applied looked
+    healthy while every write silently failed.
+    """
+    state = STARTUP_STATE["state"]
+    body = {
+        "status": "ok" if state == "ready" else ("degraded" if state == "failed" else "starting"),
         "service": "ugoekloh-foundations-api",
         "database_configured": db is not None,
         "database_ready": STARTUP_STATE["database_ready"],
+        "database_state": state,
         "database_error": STARTUP_STATE["database_error"],
     }
+    return JSONResponse(body, status_code=503 if state == "failed" else 200)
 
 @app.get("/api/public/home")
 def home():
@@ -98,7 +149,8 @@ def public_programmes():
     return {"items":items or []}
 
 @app.post("/api/public/contact")
-async def contact(payload: ContactRequest):
+async def contact(payload: ContactRequest, request: Request):
+    rate_limit(request, "contact", 5)
     client=database()
     result=client.table("contact_messages").insert(payload.model_dump()).execute()
     mail_result=await send_email(client,to=str(payload.email),subject="We received your message",heading="Thank you for contacting us",message="Your message has been received. Our team will review it and respond using the contact details you provided.",category="contact_acknowledgement")
@@ -108,7 +160,8 @@ async def contact(payload: ContactRequest):
     return {"ok":True,"id":result.data[0]["id"] if result.data else None,"email_sent":bool(mail_result.get("sent"))}
 
 @app.post("/api/public/volunteer")
-async def volunteer(payload: VolunteerRequest):
+async def volunteer(payload: VolunteerRequest, request: Request):
+    rate_limit(request, "volunteer", 5)
     client=database()
     result=client.table("volunteer_applications").insert(payload.model_dump()).execute()
     mail_result=await send_email(client,to=str(payload.email),subject="Volunteer application received",heading="Thank you for offering your time",message="Your volunteer application has been received. The foundation team will review it and contact you if further information is needed.",category="volunteer_acknowledgement")
@@ -118,7 +171,8 @@ async def volunteer(payload: VolunteerRequest):
     return {"ok":True,"id":result.data[0]["id"] if result.data else None,"email_sent":bool(mail_result.get("sent"))}
 
 @app.post("/api/donations/initialize")
-async def initialize_donation(payload: DonationRequest):
+async def initialize_donation(payload: DonationRequest, request: Request):
+    rate_limit(request, "donation", 10)
     client=database()
     if payload.method != "paystack":
         raise HTTPException(422,"Only secure online payment is accepted.")
@@ -420,7 +474,8 @@ def public_settings():
     return {}
 
 @app.post("/api/public/newsletter")
-async def newsletter(payload: NewsletterRequest):
+async def newsletter(payload: NewsletterRequest, request: Request):
+    rate_limit(request, "newsletter", 5)
     client=database()
     client.table("newsletter_subscribers").upsert({"email":str(payload.email),"status":"subscribed"},on_conflict="email").execute()
     mail_result=await send_email(client,to=str(payload.email),subject="You are subscribed to foundation updates",heading="Thank you for subscribing",message="You have been added to the foundation updates list. We will share news and information about the foundation.",category="newsletter_welcome")
@@ -493,7 +548,8 @@ async def assign_case(case_id: str, payload: dict, request: Request):
     return {"ok":True,"assigned_to":assigned_to,"email_sent":email_sent}
 
 @app.post('/api/public/partnerships')
-async def create_partnership(payload: PartnershipRequest):
+async def create_partnership(payload: PartnershipRequest, request: Request):
+    rate_limit(request, "partnership", 5)
     safe={k:str(v) for k,v in payload.model_dump().items()}
     client=database()
     result=client.table('partnership_applications').insert(safe).execute()

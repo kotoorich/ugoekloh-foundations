@@ -1,0 +1,4 @@
+# Development and CI dependencies. Kept out of requirements.txt so the Render
+# runtime image stays small and the test runner is never a production dependency.
+-r requirements.txt
+pytest>=8.0
