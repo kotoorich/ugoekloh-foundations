@@ -78,26 +78,35 @@ def ensure_initial_admin() -> None:
     active_admins = client.table("staff_profiles").select("user_id").eq(
         "role", "super_admin"
     ).eq("is_active", True).limit(1).execute().data
-    if active_admins:
-        print("[admin] An active super administrator already exists; bootstrap skipped.")
-        return
 
-    existing_user = None
-    page = 1
-    while True:
-        result = client.auth.admin.list_users(page=page, per_page=100)
-        users = getattr(result, "users", result)
-        for candidate in users:
-            if (getattr(candidate, "email", "") or "").lower() == email:
-                existing_user = candidate
-                break
-        if existing_user or len(users) < 100:
-            break
-        page += 1
+    existing_user = _find_auth_user(client, email)
+
+    # Once an active super administrator exists the bootstrap must not create or
+    # promote anyone else. It may still bring the *configured* account's password
+    # back into line with INITIAL_ADMIN_PASSWORD, because the alternative is a
+    # lockout with no recovery path: the operator can change the Render variable
+    # but nothing in the product honours it. Reconciling is safe -- it touches
+    # only the account named in the environment, and only while the variable is
+    # set. Removing the variable (as the README instructs after first setup)
+    # switches the behaviour off, so it can never silently reset a password
+    # during normal operation.
+    if active_admins:
+        if existing_user and password:
+            client.auth.admin.update_user_by_id(existing_user.id, {"password": password})
+            print(f"[admin] An active super administrator already exists; "
+                  f"reconciled the password for {email} from INITIAL_ADMIN_PASSWORD.")
+        else:
+            print("[admin] An active super administrator already exists; bootstrap skipped.")
+        return
 
     if existing_user:
         user = existing_user
-        print(f"[admin] Existing auth user found for {email}; password left unchanged.")
+        # A user can exist without a usable password: an interrupted bootstrap,
+        # or an account left over from a failed sign-in attempt. Setting the
+        # configured password here is what makes the documented Render variables
+        # actually work.
+        client.auth.admin.update_user_by_id(user.id, {"password": password})
+        print(f"[admin] Existing auth user found for {email}; password reset to the configured value.")
     else:
         created = client.auth.admin.create_user({
             "email": email,
@@ -116,6 +125,20 @@ def ensure_initial_admin() -> None:
         "is_active": True,
     }, on_conflict="user_id").execute()
     print(f"[admin] Initial super administrator is ready: {email}")
+
+
+def _find_auth_user(client, email: str):
+    """Return the Supabase auth user with this email, or None."""
+    page = 1
+    while True:
+        result = client.auth.admin.list_users(page=page, per_page=100)
+        users = getattr(result, "users", result)
+        for candidate in users:
+            if (getattr(candidate, "email", "") or "").lower() == email:
+                return candidate
+        if len(users) < 100:
+            return None
+        page += 1
 
 
 def setup_database() -> None:

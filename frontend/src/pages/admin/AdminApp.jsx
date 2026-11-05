@@ -29,19 +29,55 @@ function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function submit(event) {
     event.preventDefault();
     setError('');
+    setNotice('');
     setBusy(true);
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (signInError) {
-      setError('Those sign-in details were not accepted. Check your email and password.');
+      // Supabase reports several distinct failures through one call. Showing a
+      // single "not accepted" message for all of them sent people looking for a
+      // password problem when the real cause was an unconfirmed address or a
+      // rate limit, so each case now says what actually happened.
+      const code = signInError.code || '';
+      if (code === 'email_not_confirmed') {
+        setError('This address has not been confirmed yet. Ask a super administrator to confirm the account, then try again.');
+      } else if (code === 'over_email_send_rate_limit' || signInError.status === 429) {
+        setError('Too many attempts. Wait a minute before trying again.');
+      } else if (code === 'user_banned') {
+        setError('This account has been disabled. Contact a super administrator.');
+      } else {
+        setError('Those sign-in details were not accepted. Check your email and password, or use "Forgot your password?" below.');
+      }
       return;
     }
     navigate('/admin', { replace: true });
+  }
+
+  async function sendReset() {
+    setError('');
+    setNotice('');
+    if (!email.trim()) {
+      setError('Enter your work email first, then choose "Forgot your password?".');
+      return;
+    }
+    setBusy(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/admin/reset-password`,
+    });
+    setBusy(false);
+    if (resetError) {
+      setError('A reset link could not be sent. Wait a minute and try again.');
+      return;
+    }
+    // Deliberately the same message whether or not the address exists, so this
+    // page cannot be used to discover which emails have accounts.
+    setNotice('If that address belongs to a staff account, a reset link is on its way. Check the inbox and the spam folder.');
   }
 
   return (
@@ -67,13 +103,99 @@ function SignIn() {
             <input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" />
           </label>
           {error && <p className="field-error" role="alert">{error}</p>}
+          {notice && <p className="field-notice" role="status">{notice}</p>}
           <button className="button button-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
         </form>
+        <p className="admin-signin-recover">
+          <button type="button" className="button-text" onClick={sendReset} disabled={busy}>Forgot your password?</button>
+        </p>
         <p className="admin-signin-foot">
           <ShieldCheck size={15} aria-hidden="true" />
           <span>Child case information is confidential. Do not share your sign-in details.</span>
         </p>
         <Link className="button-text" to="/">Return to the public website</Link>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------- password recovery --- */
+
+/**
+ * Landing point for the link Supabase emails. The client emits a
+ * PASSWORD_RECOVERY event and holds a short-lived session, which is what lets
+ * the user set a new password without knowing the old one.
+ */
+function ResetPassword() {
+  const navigate = useNavigate();
+  const { session, loading, signOut } = useAuth();
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event) {
+    event.preventDefault();
+    setError('');
+    if (password !== confirm) { setError('The two passwords do not match.'); return; }
+    if (password.length < 12) { setError('Use at least 12 characters.'); return; }
+    setBusy(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (updateError) { setError(updateError.message || 'The password could not be updated.'); return; }
+    setDone(true);
+    setTimeout(() => navigate('/admin', { replace: true }), 1200);
+  }
+
+  if (loading) {
+    return <div className="admin-boot"><h2>Checking your reset link…</h2></div>;
+  }
+
+  if (!session) {
+    return (
+      <div className="admin-signin">
+        <div className="admin-signin-card">
+          <div className="admin-signin-brand">
+            <BrandMark size={44} />
+            <div><strong>Ugoekloh Foundations</strong><small>Staff administration portal</small></div>
+          </div>
+          <h1>This reset link has expired</h1>
+          <p className="admin-signin-note">Reset links are single-use and time-limited. Request a new one from the sign-in page.</p>
+          <Link className="button button-full" to="/admin/sign-in">Back to sign in</Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-signin">
+      <div className="admin-signin-card">
+        <div className="admin-signin-brand">
+          <BrandMark size={44} />
+          <div><strong>Ugoekloh Foundations</strong><small>Staff administration portal</small></div>
+        </div>
+        <span className="admin-eyebrow">SECURE STAFF ACCESS</span>
+        <h1>Choose a new password</h1>
+        {done ? (
+          <p className="field-notice" role="status">Your password has been updated. Taking you to the dashboard…</p>
+        ) : (
+          <form onSubmit={submit}>
+            <label className="admin-field">
+              <span>New password</span>
+              <input type="password" autoComplete="new-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 12 characters" />
+            </label>
+            <label className="admin-field">
+              <span>Confirm new password</span>
+              <input type="password" autoComplete="new-password" required value={confirm} onChange={(event) => setConfirm(event.target.value)} />
+            </label>
+            {error && <p className="field-error" role="alert">{error}</p>}
+            <button className="button button-full" disabled={busy}>{busy ? 'Saving…' : 'Save password'}</button>
+          </form>
+        )}
+        <p className="admin-signin-foot">
+          <button type="button" className="button-text" onClick={signOut}>Sign out</button>
+        </p>
       </div>
     </div>
   );
@@ -434,10 +556,27 @@ export default function AdminApp() {
     body: 'Your staff account is inactive or has no assigned role. Ask a super administrator to review it.',
   };
 
+  // Any protected call that comes back 401 dispatches this event. Reacting here,
+  // once, means an expired session sends the operator back to the sign-in form
+  // instead of leaving every panel showing a bare error message.
+  const navigate = useNavigate();
+  useEffect(() => {
+    function onExpired() {
+      signOut().finally(() => navigate('/admin/sign-in', { replace: true }));
+    }
+    window.addEventListener('foundation:session-expired', onExpired);
+    return () => window.removeEventListener('foundation:session-expired', onExpired);
+  }, [navigate, signOut]);
+
   return (
     <ToastProvider>
       <Routes>
         <Route path="sign-in" element={isSignedIn && canAccessAdmin ? <Navigate to="/admin" replace /> : <SignIn />} />
+        {/* Password recovery must stay reachable even when signed in: Supabase
+            establishes a temporary session from the emailed link, and the guard
+            on this route would otherwise bounce the user to the dashboard
+            before they could set a new password. */}
+        <Route path="reset-password" element={<ResetPassword />} />
         <Route
           path="*"
           element={

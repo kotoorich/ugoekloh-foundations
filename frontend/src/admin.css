@@ -276,6 +276,8 @@
 .admin-field input[aria-invalid="true"],
 .admin-field textarea[aria-invalid="true"] { border-color: var(--admin-danger); }
 .field-error { font-size: 11.5px; font-weight: 500; color: var(--admin-danger); }
+.field-notice { font-size: 11.5px; font-weight: 500; color: #37503f; background: var(--admin-green-soft); border-radius: 8px; padding: 8px 10px; line-height: 1.6; }
+.admin-signin-recover { margin: 14px 0 0; text-align: center; }
 
 .admin-fieldset { border: 1px solid var(--admin-line); border-radius: var(--admin-radius); padding: 16px; margin: 0; display: flex; flex-direction: column; gap: 14px; }
 .admin-fieldset > legend { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--admin-muted); padding: 0 6px; }

@@ -167,7 +167,9 @@ The two storage buckets are created by the migrations:
 
 ### First administrator — automatic setup
 
-Set `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD` (minimum 12 characters), and `INITIAL_ADMIN_NAME` in Render. On backend startup, the system creates the Auth user if needed and grants the initial `super_admin` role. Existing users are not given a new password. Remove the initial password variable after the first successful setup. No SQL or manual user creation is needed.
+Set `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD` (minimum 12 characters), and `INITIAL_ADMIN_NAME` in Render. On backend startup, the system creates the Auth user if needed, sets its password to the configured value, and grants the initial `super_admin` role. No SQL or manual user creation is needed.
+
+**If you are locked out of the dashboard**, set (or correct) `INITIAL_ADMIN_PASSWORD` in Render and restart the service. The account named in `INITIAL_ADMIN_EMAIL` is given that password on the next startup, even when other super-admins already exist. Change the password in the dashboard afterwards, then remove `INITIAL_ADMIN_PASSWORD` from Render to switch this reconciliation off. Staff can also use "Forgot your password?" on the sign-in page; that sends a Supabase reset email and needs a working email sender.
 
 
 ---
@@ -213,7 +215,7 @@ Add these to **Render → Your Web Service → Environment**. The names and purp
 | `PAYSTACK_SECRET_KEY` | Leave empty until Paystack test mode is ready |
 | `PAYSTACK_CALLBACK_URL` | Your Vercel URL followed by `/donation/return` |
 
-Set the initial-admin values before the first deployment. After the backend successfully creates the administrator, remove `INITIAL_ADMIN_PASSWORD` from Render. The bootstrap does not overwrite the password of an existing Auth user and skips creating/promoting another account when an active super-admin already exists.
+Set the initial-admin values before the first deployment. After the backend successfully creates the administrator, change the password in the dashboard and remove `INITIAL_ADMIN_PASSWORD` from Render. While `INITIAL_ADMIN_PASSWORD` is present, the account named in `INITIAL_ADMIN_EMAIL` has its password set to that value on every backend start — which is also the recovery route if you are locked out. The bootstrap never creates or promotes a second super-admin once an active one exists.
 
 
 At first, you may not yet know your Vercel domain. You can deploy Render with the Supabase values first, then return to Render and fill in FRONTEND_URL, PAYSTACK_CALLBACK_URL and ALLOWED_ORIGINS after Vercel gives you the real domain.

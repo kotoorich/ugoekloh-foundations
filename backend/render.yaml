@@ -5,11 +5,25 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /api/health
     envVars:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Required for automatic schema setup. Without it the migration runner
+      # cannot connect and every write fails at runtime while the API still
+      # reports healthy.
+      - key: SUPABASE_DB_URL
+        sync: false
+      # First-administrator bootstrap. Remove INITIAL_ADMIN_PASSWORD after the
+      # account is confirmed, which also disables password reconciliation.
+      - key: INITIAL_ADMIN_EMAIL
+        sync: false
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
+      - key: INITIAL_ADMIN_NAME
+        sync: false
+      - key: EMAIL_ADMIN_NOTIFY_TO
         sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
@@ -19,3 +33,4 @@ services:
         sync: false
       - key: ALLOWED_ORIGINS
         sync: false
+    healthCheckPath: /api/health
