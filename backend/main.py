@@ -85,7 +85,10 @@ def health():
 @app.get("/api/public/home")
 def home():
     if not db: return {"programmes":[],"impact":{}}
-    programs=db.table("programmes").select("id,title,slug,category,description,image_path,goal_amount,amount_raised").eq("status","published").in_("slug",["fire-safety-in-the-home","children-and-fire-management-at-home"]).order("created_at").execute().data
+    # The two most recently published programmes, so a programme created in the
+    # dashboard reaches the homepage without a code change. Previously this
+    # filtered on two hard-coded slugs, which silently hid every new programme.
+    programs=db.table("programmes").select("id,title,slug,category,description,image_path,goal_amount,amount_raised").eq("status","published").order("created_at",desc=True).limit(2).execute().data
     return {"programmes":programs or [],"impact":{}}
 
 @app.get("/api/public/programmes")
@@ -312,6 +315,44 @@ def require_staff(request: Request, roles: Optional[tuple] = None):
 def require_super_admin(request: Request):
     user, _ = require_staff(request, ("super_admin","admin"))
     return user
+
+
+@app.get("/api/me")
+def current_staff(request: Request):
+    """The signed-in staff member, read through the service role.
+
+    The browser reads staff_profiles directly for most things, but that read is
+    subject to row-level security and to every column the account happens to
+    have. This endpoint answers the one question the access guard depends on --
+    "is this person an active member of staff, and with what role?" -- from a
+    single authoritative place, so a missing optional column can never be
+    mistaken for a missing or inactive account.
+    """
+    header=request.headers.get("authorization","")
+    if not header.lower().startswith("bearer "):
+        raise HTTPException(401,"Sign in is required.")
+    client=database()
+    token=header.split(" ",1)[1]
+    try:
+        user=client.auth.get_user(token).user
+    except Exception:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    if not user:
+        raise HTTPException(401,"Your session is invalid or expired.")
+    profile=client.table("staff_profiles").select("*").eq("user_id",user.id).maybe_single().execute().data
+    if not profile:
+        return {"user_id":user.id,"email":getattr(user,"email",None),"found":False,
+                "is_active":False,"role":None,"full_name":None,
+                "must_change_password":False}
+    return {
+        "user_id": user.id,
+        "email": getattr(user, "email", None),
+        "found": True,
+        "is_active": bool(profile.get("is_active")),
+        "role": profile.get("role"),
+        "full_name": profile.get("full_name"),
+        "must_change_password": bool(profile.get("must_change_password")),
+    }
 
 
 @app.get("/api/admin/email/settings")

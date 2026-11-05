@@ -21,7 +21,8 @@ export const SECTIONS = {
       steps: [
         'The cards at the top summarise the whole foundation at a glance.',
         'Donation activity shows verified income over the last 90 days.',
-        'Recent activity lists the newest donations and applications to review.',
+        'Recent donations lists the newest verified gifts.',
+        'The enquiries card counts messages still waiting for a reply.',
         'Use Quick access to jump straight to the area you need.',
       ],
       note: 'Only figures your role is allowed to see are counted here, so a zero may simply mean "not visible to you".',

@@ -1,9 +1,35 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { supabase, isConfigured } from './supabase';
+import { supabase, apiUrl } from './supabase';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
+
+/**
+ * Ask the backend who this account is.
+ *
+ * The dashboard previously read staff_profiles straight from the browser. That
+ * read is governed by row-level security, so any problem with the policy or the
+ * profile row looked identical to "you are not staff" and locked people out
+ * with no way to tell why. The backend answers the same question through the
+ * service role, and distinguishes three cases the interface needs to treat
+ * differently: not a staff account at all, a staff account that is switched
+ * off, and a staff account that is fine.
+ */
+async function fetchStaffProfile(activeSession) {
+  // Without a deadline an unreachable API leaves the admin area stuck on
+  // "Checking your access…" until the browser's own multi-minute timeout.
+  const response = await fetch(`${apiUrl}/api/me`, {
+    headers: { Authorization: `Bearer ${activeSession.access_token}` },
+    signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+      ? AbortSignal.timeout(8000)
+      : undefined,
+  });
+  if (response.status === 401) return { status: 'unauthorized' };
+  if (!response.ok) return { status: 'error' };
+  const payload = await response.json();
+  if (!payload.found) return { status: 'no-profile', profile: null };
+  return { status: payload.is_active ? 'ok' : 'inactive', profile: payload };
+}
 
 /**
  * Single source of truth for the signed-in staff member.
@@ -15,40 +41,88 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [accessState, setAccessState] = useState('unknown');
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async (activeSession) => {
     if (!activeSession || !supabase) {
       setProfile(null);
+      setAccessState('signed-out');
       return;
     }
-    const { data, error } = await supabase
-      .from('staff_profiles')
-      .select('user_id,full_name,role,is_active,must_change_password')
-      .eq('user_id', activeSession.user.id)
-      .maybeSingle();
-    setProfile(error ? null : data);
+    let result;
+    try {
+      result = await fetchStaffProfile(activeSession);
+    } catch {
+      result = { status: 'error' };
+    }
+    // Fall back to reading the profile directly if the API could not answer,
+    // so a deployment running an older backend still lets staff in. This read
+    // also gets a deadline: an unreachable Supabase must not leave the admin
+    // area spinning on "Checking your access…" forever.
+    if (result.status === 'error') {
+      try {
+        let query = supabase
+          .from('staff_profiles')
+          .select('user_id,full_name,role,is_active,must_change_password')
+          .eq('user_id', activeSession.user.id)
+          .maybeSingle();
+        if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+          query = query.abortSignal(AbortSignal.timeout(8000));
+        }
+        const { data, error } = await query;
+        if (!error) result = { status: data ? (data.is_active ? 'ok' : 'inactive') : 'no-profile', profile: data };
+      } catch {
+        result = { status: 'error' };
+      }
+    }
+    setProfile(result.profile || null);
+    setAccessState(result.status);
   }, []);
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return undefined; }
     let active = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      await loadProfile(data.session);
+    // `loading` gates the whole admin area. Every path out of this effect must
+    // clear it, otherwise a rejected or stalled session lookup strands the user
+    // on the boot screen with no way forward. `getSession()` can stall when the
+    // auth client waits on a browser lock, so a watchdog clears the gate too.
+    const watchdog = setTimeout(() => {
       if (active) setLoading(false);
-    });
+    }, 8000);
+
+    supabase.auth.getSession()
+      .then(async ({ data }) => {
+        if (!active) return;
+        setSession(data.session);
+        await loadProfile(data.session);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSession(null);
+        setProfile(null);
+        setAccessState('error');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!active) return;
       setSession(nextSession);
-      await loadProfile(nextSession);
-      setLoading(false);
+      try {
+        await loadProfile(nextSession);
+      } finally {
+        if (active) setLoading(false);
+      }
     });
 
-    return () => { active = false; subscription.unsubscribe(); };
+    return () => {
+      active = false;
+      clearTimeout(watchdog);
+      subscription.unsubscribe();
+    };
   }, [loadProfile]);
 
   const signOut = useCallback(async () => {
@@ -66,62 +140,16 @@ export function AuthProvider({ children }) {
     session,
     profile,
     loading,
+    accessState,
     signOut,
     refreshProfile,
     isSignedIn: Boolean(session),
     isActiveStaff: Boolean(profile?.is_active),
     role: profile?.role || null,
+    email: profile?.email || session?.user?.email || null,
     accessToken: session?.access_token || null,
     canAccessAdmin: Boolean(profile?.is_active && profile?.role),
-  }), [session, profile, loading, signOut, refreshProfile]);
+  }), [session, profile, loading, accessState, signOut, refreshProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-/**
- * Guard for the admin area.
- *
- * Replaces the old window.confirm-on-popstate trick, which did not actually
- * stop the browser Back button from re-entering the dashboard.
- */
-export function RequireStaff({ children }) {
-  const { loading, isSignedIn, canAccessAdmin } = useAuth();
-  const location = useLocation();
-
-  if (!isConfigured) return children;
-  if (loading) {
-    return (
-      <div className="admin-boot" role="status">
-        <span className="admin-boot-spinner" aria-hidden="true" />
-        <p>Checking your access…</p>
-      </div>
-    );
-  }
-  if (!isSignedIn) {
-    return <Navigate to="/admin/sign-in" replace state={{ from: location.pathname }} />;
-  }
-  if (!canAccessAdmin) {
-    return (
-      <div className="admin-boot">
-        <h2>Access unavailable</h2>
-        <p>Your staff account is inactive or has no assigned role. Ask a super administrator to review it.</p>
-      </div>
-    );
-  }
-  return children;
-}
-
-/** Redirect a signed-in staff member away from the sign-in page. */
-export function RedirectIfSignedIn({ children }) {
-  const { loading, isSignedIn, canAccessAdmin } = useAuth();
-  if (loading) {
-    return (
-      <div className="admin-boot" role="status">
-        <span className="admin-boot-spinner" aria-hidden="true" />
-        <p>Checking your access…</p>
-      </div>
-    );
-  }
-  if (isSignedIn && canAccessAdmin) return <Navigate to="/admin" replace />;
-  return children;
 }

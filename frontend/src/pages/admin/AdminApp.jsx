@@ -19,7 +19,7 @@ import NewsletterManager from './panels/NewsletterManager';
 import AuditTrail from './panels/AuditTrail';
 
 function BrandMark({ size = 34 }) {
-  return <img className="admin-logo" src="/logo.svg" alt="" width={size} height={size} aria-hidden="true" />;
+  return <img className="admin-logo" src="/logo.png" alt="" width={size} height={size} aria-hidden="true" />;
 }
 
 /* ------------------------------------------------------------- sign in --- */
@@ -143,6 +143,22 @@ function PasswordGate() {
 
 /* --------------------------------------------------------------- shell --- */
 
+function NoAccess({ section, role }) {
+  return (
+    <div className="admin-panel">
+      <div className="admin-empty">
+        <span className="admin-empty-icon"><ShieldCheck size={26} aria-hidden="true" /></span>
+        <h3>You do not have access to {section}</h3>
+        <p>
+          Your role is {ROLE_LABELS[role] || role}. Ask a super administrator to
+          grant access if you need to work in this area.
+        </p>
+        <Link className="button" to="/admin">Back to dashboard</Link>
+      </div>
+    </div>
+  );
+}
+
 function Shell() {
   const { profile, role, signOut } = useAuth();
   const toast = useToast();
@@ -157,13 +173,41 @@ function Shell() {
     : 'dashboard';
   const activeSection = SECTIONS[sectionKey];
 
+  // The sidebar only lists sections a role may use, but nothing stopped someone
+  // typing an admin-only URL. Resolve the section against the role's own
+  // navigation and show a clear refusal instead of rendering a screen the
+  // database would reject anyway.
+  const guarded = (key, element) => {
+    const allowed = navigation.some(([navKey]) => navKey === key);
+    return allowed ? element : <NoAccess section={SECTIONS[key]?.label || key} role={role} />;
+  };
+
   useEffect(() => { setDrawerOpen(false); setMenuOpen(false); }, [sectionKey]);
 
   useEffect(() => {
     if (sectionParam && sectionParam !== sectionKey) navigate('/admin', { replace: true });
   }, [sectionParam, sectionKey, navigate]);
 
-  const pendingCount = 0;
+  // Count of unanswered enquiries, shown as a badge on the topbar bell. Staff
+  // without inbox access see no badge rather than a misleading zero.
+  const [pendingCount, setPendingCount] = useState(0);
+  const canSeeInbox = navigation.some(([key]) => key === 'inbox');
+
+  useEffect(() => {
+    if (!canSeeInbox || !supabase) return undefined;
+    let active = true;
+    async function countPending() {
+      const open = ['new', 'unread', 'pending', 'in_review', 'submitted'];
+      const tables = ['contact_messages', 'volunteer_applications', 'partnership_applications'];
+      const results = await Promise.all(tables.map((table) =>
+        supabase.from(table).select('id', { count: 'exact', head: true }).in('status', open)));
+      if (!active) return;
+      setPendingCount(results.reduce((sum, result) => sum + (result.count || 0), 0));
+    }
+    countPending();
+    const timer = setInterval(countPending, 60000);
+    return () => { active = false; clearInterval(timer); };
+  }, [canSeeInbox, sectionKey]);
 
   async function handleSignOut() {
     await signOut();
@@ -220,16 +264,18 @@ function Shell() {
             <h1>{activeSection?.label || 'Dashboard'}</h1>
           </div>
           <div className="admin-topbar-tools">
-            <button
-              type="button"
-              className="admin-icon-button"
-              onClick={() => navigate('/admin/inbox')}
-              aria-label="Open enquiries"
-              title="Open enquiries"
-            >
-              <Bell size={18} />
-              {pendingCount > 0 && <span className="admin-dot" aria-hidden="true" />}
-            </button>
+            {canSeeInbox && (
+              <button
+                type="button"
+                className="admin-icon-button"
+                onClick={() => navigate('/admin/inbox')}
+                aria-label={pendingCount > 0 ? `Open enquiries, ${pendingCount} awaiting a reply` : 'Open enquiries'}
+                title={pendingCount > 0 ? `${pendingCount} enquiries awaiting a reply` : 'Open enquiries'}
+              >
+                <Bell size={18} />
+                {pendingCount > 0 && <span className="admin-dot" aria-hidden="true" />}
+              </button>
+            )}
             <div className="admin-account">
               <button type="button" className="admin-account-button" onClick={() => setMenuOpen((v) => !v)} aria-expanded={menuOpen} aria-haspopup="menu">
                 <span className="admin-avatar" aria-hidden="true">
@@ -260,24 +306,24 @@ function Shell() {
           <Routes>
             <Route index element={<Dashboard />} />
             <Route path="account" element={<AccountPanel />} />
-            <Route path="programmes" element={<ContentPanel sectionKey="programmes" />} />
-            <Route path="news" element={<ContentPanel sectionKey="news" />} />
-            <Route path="events" element={<ContentPanel sectionKey="events" />} />
-            <Route path="partners" element={<ContentPanel sectionKey="partners" />} />
-            <Route path="faqs" element={<ContentPanel sectionKey="faqs" />} />
-            <Route path="gallery" element={<ContentPanel sectionKey="gallery" />} />
-            <Route path="impact_reports" element={<ContentPanel sectionKey="impact_reports" />} />
-            <Route path="site_pages" element={<ContentPanel sectionKey="site_pages" />} />
-            <Route path="donations" element={<DonationLedger />} />
-            <Route path="allocations" element={<Allocations />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="beneficiaries" element={<CaseManager />} />
-            <Route path="staff_profiles" element={<StaffManager />} />
-            <Route path="inbox" element={<Inbox />} />
-            <Route path="newsletter" element={<NewsletterManager />} />
-            <Route path="audit_logs" element={<AuditTrail />} />
-            <Route path="settings" element={<FoundationSettings />} />
-            <Route path="email_settings" element={<EmailDelivery />} />
+            <Route path="programmes" element={guarded('programmes', <ContentPanel sectionKey="programmes" />)} />
+            <Route path="news" element={guarded('news', <ContentPanel sectionKey="news" />)} />
+            <Route path="events" element={guarded('events', <ContentPanel sectionKey="events" />)} />
+            <Route path="partners" element={guarded('partners', <ContentPanel sectionKey="partners" />)} />
+            <Route path="faqs" element={guarded('faqs', <ContentPanel sectionKey="faqs" />)} />
+            <Route path="gallery" element={guarded('gallery', <ContentPanel sectionKey="gallery" />)} />
+            <Route path="impact_reports" element={guarded('impact_reports', <ContentPanel sectionKey="impact_reports" />)} />
+            <Route path="site_pages" element={guarded('site_pages', <ContentPanel sectionKey="site_pages" />)} />
+            <Route path="donations" element={guarded('donations', <DonationLedger />)} />
+            <Route path="allocations" element={guarded('allocations', <Allocations />)} />
+            <Route path="reports" element={guarded('reports', <Reports />)} />
+            <Route path="beneficiaries" element={guarded('beneficiaries', <CaseManager />)} />
+            <Route path="staff_profiles" element={guarded('staff_profiles', <StaffManager />)} />
+            <Route path="inbox" element={guarded('inbox', <Inbox />)} />
+            <Route path="newsletter" element={guarded('newsletter', <NewsletterManager />)} />
+            <Route path="audit_logs" element={guarded('audit_logs', <AuditTrail />)} />
+            <Route path="settings" element={guarded('settings', <FoundationSettings />)} />
+            <Route path="email_settings" element={guarded('email_settings', <EmailDelivery />)} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Routes>
         </main>
@@ -341,7 +387,7 @@ function AccountPanel() {
 }
 
 export default function AdminApp() {
-  const { loading, isSignedIn, canAccessAdmin, profile } = useAuth();
+  const { loading, isSignedIn, canAccessAdmin, accessState, profile, signOut, email } = useAuth();
 
   if (!isConfigured) {
     return (
@@ -361,6 +407,33 @@ export default function AdminApp() {
     );
   }
 
+  // A signed-in account that is not active staff must still be able to reach the
+  // sign-in form. Without the Sign out action below, a session belonging to a
+  // non-staff or deactivated account kept redirecting here, so /admin was a dead
+  // end: the sign-in form was unreachable and the only way back was to clear
+  // browser storage by hand.
+  const blocked = {
+    inactive: {
+      heading: 'This staff account is switched off',
+      body: 'Your account exists but is not active. An administrator can reactivate it from Staff accounts.',
+    },
+    'no-profile': {
+      heading: 'No staff profile is linked to this sign-in',
+      body: 'You signed in successfully, but no staff record is linked to this account. An administrator needs to create one for you in Staff accounts.',
+    },
+    unauthorized: {
+      heading: 'Your session has expired',
+      body: 'Sign in again to continue.',
+    },
+    error: {
+      heading: 'Your access could not be checked',
+      body: 'The foundation API did not answer. If this is a new deployment, wait a moment and try again; otherwise check that VITE_API_URL points at the running API.',
+    },
+  }[accessState] || {
+    heading: 'Access unavailable',
+    body: 'Your staff account is inactive or has no assigned role. Ask a super administrator to review it.',
+  };
+
   return (
     <ToastProvider>
       <Routes>
@@ -371,8 +444,13 @@ export default function AdminApp() {
             !isSignedIn ? <Navigate to="/admin/sign-in" replace />
               : !canAccessAdmin ? (
                 <div className="admin-boot">
-                  <h2>Access unavailable</h2>
-                  <p>Your staff account is inactive or has no assigned role. Ask a super administrator to review it.</p>
+                  <h2>{blocked.heading}</h2>
+                  <p>{blocked.body}</p>
+                  {email && <p className="admin-boot-account">Signed in as <strong>{email}</strong></p>}
+                  <div className="admin-boot-actions">
+                    <button type="button" className="button" onClick={signOut}>Sign out and try another account</button>
+                    <button type="button" className="button button-outline" onClick={() => window.location.reload()}>Try again</button>
+                  </div>
                 </div>
               )
               : profile?.must_change_password ? <PasswordGate />
